@@ -1,0 +1,4 @@
+package hypermedia
+
+class StateMachineManager {
+}
