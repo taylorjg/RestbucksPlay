@@ -10,7 +10,7 @@ This is a bit sketchy at the moment but I am planning something along these line
 * Initially, manually create a hardcoded graph of objects rather than write a parser for the DSL
     * Objects in the graph: Accept, State, Link, Error, StateMachineTemplate
 * Create a Play application to host Restbucks
-* Use String Interpolating Routing DSL ([sird](String Interpolating Routing DSL)) to handle all the API web requests
+* Use String Interpolating Routing DSL ([sird](https://www.playframework.com/documentation/2.5.x/ScalaRouting)) to handle all the API web requests
 * Use Akka actors in the implementation ?
 * Where to store the data ?
   * Use a data access layer on top of a database ?
