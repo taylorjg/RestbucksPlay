@@ -1,21 +1,23 @@
 package hypermedia
 
-import play.api.libs.json.Json
-import play.api.mvc.{Action, Handler, RequestHeader}
 import play.api.mvc.Results._
+import play.api.mvc.{Action, Handler, RequestHeader}
 
-// Implement this as an Akka actor ?
-class StateMachineDispatcher {
-
-  private var stateMachines: Seq[StateMachineManager] = Seq()
-
-  def add(stateMachine: StateMachineManager) =
-    stateMachines = stateMachines :+ stateMachine
+class StateMachineDispatcher(private val stateMachines: StateMachineManager*) {
 
   def dispatch(request: RequestHeader): Handler = Action {
-    Ok(Json.toJson(
-      Map(
-        "method" -> request.method,
-        "uri" -> request.uri)))
+
+    val stateMachine = stateMachines find {
+      sm =>
+        val pos = sm.uriTemplate indexOf "/{"
+        val prefix = sm.uriTemplate take pos
+        request.uri startsWith prefix
+    }
+
+    stateMachine.fold {
+      NotFound(s"The dispatcher couldn't find a state machine for: ${request.uri}")
+    } {
+      sm => sm.process(request)
+    }
   }
 }

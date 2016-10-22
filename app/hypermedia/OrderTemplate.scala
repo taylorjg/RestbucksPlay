@@ -1,21 +1,20 @@
 package hypermedia
 
-object OrderStateMachine {
+object OrderTemplate {
 
-  private final val NoTransitionTo = None
-  private final val NoAccepts: Seq[Accept] = Seq()
-  private final val NoLinks: Seq[Link] = Seq()
-  private final val NoErrors: Seq[Error] = Seq()
+  import TemplateConstants._
+  import play.api.http.Status._
 
   private final val OrderCreatedState = State("OrderCreated", NoTransitionTo,
-    Seq(Accept("POST", "NewOrder", 201, Some("Unpaid"), Seq(Error("NotValidOrder", 400)))),
+    Seq(
+      Accept("POST", "NewOrder", CREATED, Some("Unpaid"), Seq(Error("NotValidOrder", BAD_REQUEST)))),
     NoLinks)
 
   private final val UnpaidState = State("Unpaid", NoTransitionTo,
     Seq(
-      Accept("GET", "GetOrderStatus", 200, NoTransitionTo, Seq(Error("NoSuchOrder", 404))),
-      Accept("POST", "UpdateOrder", 200, NoTransitionTo, NoErrors),
-      Accept("DELETE", "CancelOrder", 200, Some("Cancelled"), NoErrors)
+      Accept("GET", "GetOrderStatus", OK, NoTransitionTo, Seq(Error("NoSuchOrder", NOT_FOUND))),
+      Accept("POST", "UpdateOrder", OK, NoTransitionTo, NoErrors),
+      Accept("DELETE", "CancelOrder", OK, Some("Cancelled"), NoErrors)
     ),
     Seq(
       Link("latest"),
@@ -24,13 +23,13 @@ object OrderStateMachine {
       Link("cancel")))
 
   private final val PreparingState = State("Preparing", NoTransitionTo,
-    Seq(Accept("GET", "GetOrderStatus", 200, NoTransitionTo, NoErrors)),
+    Seq(Accept("GET", "GetOrderStatus", OK, NoTransitionTo, NoErrors)),
     Seq(Link("latest")))
 
   private final val ReadyState = State("Ready", NoTransitionTo,
     Seq(
-      Accept("GET", "GetOrderStatus", 200, NoTransitionTo, NoErrors),
-      Accept("DELETE", "ReceiveOrder", 200, Some("Delivered"), NoErrors)),
+      Accept("GET", "GetOrderStatus", OK, NoTransitionTo, NoErrors),
+      Accept("DELETE", "ReceiveOrder", OK, Some("Delivered"), NoErrors)),
     Seq(
       Link("latest"),
       Link("receive")))
@@ -38,7 +37,7 @@ object OrderStateMachine {
   private final val DeliveredState = State("Delivered", NoTransitionTo, NoAccepts, NoLinks)
   private final val CancelledState = State("Cancelled", NoTransitionTo, NoAccepts, NoLinks)
 
-  final val stateMachineTemplate = StateMachineTemplate(
+  final val template = StateMachineTemplate(
     "/api/order/{id}",
     "Restbucks.OrderingService",
     "application/vnd.restbucks+xml",
