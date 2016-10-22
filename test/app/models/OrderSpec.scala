@@ -11,7 +11,6 @@ class OrderSpec extends FlatSpec with Matchers {
     val orderItem2 = OrderItem("latte", "semi", "small")
     val order1 = Order(42, "takeAway", Seq(orderItem1, orderItem2), "payment-expected")
     val xml = order1.toXML
-    println(s"xml: $xml")
     val order2 = Order.fromXML(xml)
     order2 should be(order1)
   }
