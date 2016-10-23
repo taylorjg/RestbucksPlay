@@ -4,7 +4,7 @@ class OrderingService {
 
   import scala.xml.NodeSeq
 
-  def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = ???
+  def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = ("123", <order></order>)
 
   def getOrderStatus(id: String, requestDoc: NodeSeq): NodeSeq = ???
 
