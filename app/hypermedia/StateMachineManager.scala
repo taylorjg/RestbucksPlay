@@ -1,55 +1,55 @@
 package hypermedia
 
-import models.DapLink
-import play.api.mvc.Results._
-import play.api.mvc.{Request, Result}
+class StateMachineManager(private val template: StateMachineTemplate, private val service: Any) {
 
-class StateMachineManager(private val template: StateMachineTemplate) {
+  import play.api.mvc.Results._
+  import play.api.mvc.{Request, Result}
 
-  import scala.xml.{Node, NodeSeq, Elem}
+  import scala.xml.{Elem, Node, NodeSeq}
   import scala.reflect.runtime.universe._
 
   val uriTemplate: String = template.uriTemplate
 
   private var states: Map[String, State] = Map()
+  private val instanceMirror = runtimeMirror(getClass.getClassLoader).reflect(service)
 
   def process(request: Request[NodeSeq]): Result = {
 
     val pos = uriTemplate indexOf "/{"
     val baseUri = uriTemplate take pos
+    val trimmedRequestUri = request.uri.trim('/')
 
-    val initialStateAccept = template.initialState.accepts find { a => a.httpVerb == request.method }
-    if (initialStateAccept.isDefined && request.uri.reverse.dropWhile(c => c == '/').reverse == baseUri) {
-      val methodMirror = getMethod(initialStateAccept.get)
-      val result = methodMirror(request.body)
-      result match {
-        case (id: String, responseDoc: NodeSeq) =>
-          val newStateName = initialStateAccept.get.transitionTo.getOrElse(template.initialState.name)
-          // TODO: handle errors (accept.errors)
-          val statusCode = initialStateAccept.get.response
-          new Status(statusCode).apply(transition(id, newStateName, responseDoc))
-        case other => throw new Exception(s"methodMirror returned $other")
-      }
-    }
-    else {
-      val id = request.uri.drop(pos + 1)
-      // TODO: use states.get(id) instead to give Option[State]
-      val currentState = states(id)
-      val acceptOption = currentState.accepts find { a => a.httpVerb == request.method}
-      acceptOption match {
-        case Some(accept) =>
+    template.initialState.accepts find (a => a.httpVerb == request.method) match {
+      case Some(accept) if trimmedRequestUri == baseUri =>
+        val methodMirror = getMethod(accept)
+        methodMirror(request.body) match {
+          case (id: String, responseDoc: NodeSeq) =>
+            val newStateName = accept.transitionTo.getOrElse(template.initialState.name)
+            // TODO: handle accept.errors
+            // TODO: handle internal server errors
+            val statusCode = accept.response
+            new Status(statusCode).apply(transition(id, newStateName, responseDoc))
+          case other =>
+            throw new Exception(s"accept method returned unexpected value, $other")
+        }
+      case _ =>
+        val id = request.uri.drop(pos + 1)
+        (for {
+          currentState <- states.get(id)
+          accept <- currentState.accepts find (a => a.httpVerb == request.method)
+        } yield {
           val methodMirror = getMethod(accept)
-          val result = methodMirror(id, request.body)
-          result match {
+          methodMirror(id, request.body) match {
             case responseDoc: NodeSeq =>
               val newStateName = accept.transitionTo.getOrElse(currentState.name)
-              // TODO: handle errors (accept.errors)
+              // TODO: handle accept.errors
+              // TODO: handle internal server errors
               val statusCode = accept.response
               new Status(statusCode).apply(transition(id, newStateName, responseDoc))
-            case other => throw new Exception(s"methodMirror returned $other")
+            case other =>
+              throw new Exception(s"accept method returned unexpected value, $other")
           }
-        case None => throw new Exception(s"No matching Accept found in current state for id $id")
-      }
+        }) getOrElse InternalServerError("TODO: add error message...")
     }
   }
 
@@ -57,23 +57,27 @@ class StateMachineManager(private val template: StateMachineTemplate) {
     states += id -> template.states(stateName)
 
   private def getMethod(accept: Accept): MethodMirror = {
-      val service = new services.OrderingService
-      val instanceMirror = runtimeMirror(getClass.getClassLoader).reflect(service)
-      val methodSymbol = instanceMirror.symbol.info.member(TermName(accept.method)).asMethod
-      instanceMirror.reflectMethod(methodSymbol)
-    }
+    val methodSymbol = instanceMirror.symbol.info.member(TermName(accept.method)).asMethod
+    instanceMirror.reflectMethod(methodSymbol)
+  }
 
   private def transition(id: String, stateName: String, responseDoc: NodeSeq): NodeSeq = {
     val state = template.states(stateName)
     states += id -> state
     val selfDapLink = DapLink("self", template.uriTemplate.replace("{id}", id), None)
     // TODO: add the other DAP links from state.links (fold over a Seq of DapLink ?)
-    addChild(responseDoc, selfDapLink.toXML)
+    responseDoc addChild selfDapLink.toXML
   }
 
-  private def addChild(doc: NodeSeq, child: Node): NodeSeq =
-    doc.headOption match {
-      case Some(e: Elem) => e.copy(child = e.child ++ child)
-      case other => doc
-    }
+  implicit class NodeSeqExtensions(ns: NodeSeq) {
+    def addChild(child: Node): NodeSeq =
+      ns.headOption match {
+        case Some(e: Elem) => e.copy(child = e.child ++ child)
+        case other => ns
+      }
+  }
+
+  implicit class StringExtensions(s: String) {
+    def trim(c: Char): String = s.reverse.dropWhile(c => c == '/').reverse
+  }
 }

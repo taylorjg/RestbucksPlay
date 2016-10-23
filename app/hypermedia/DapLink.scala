@@ -1,4 +1,4 @@
-package models
+package hypermedia
 
 case class DapLink(rel: String, uri: String, mediaType: Option[String])
 
