@@ -13,6 +13,9 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
   private var states: Map[String, State] = Map()
   private val instanceMirror = runtimeMirror(getClass.getClassLoader).reflect(service)
 
+  def transitionTo(id: String, stateName: String): Unit =
+    states += id -> template.states(stateName)
+
   def process(request: Request[NodeSeq]): Result = {
 
     val pos = uriTemplate indexOf "/{"
@@ -21,40 +24,37 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
 
     template.initialState.accepts find (a => a.httpVerb == request.method) match {
       case Some(accept) if trimmedRequestUri == baseUri =>
-        val methodMirror = getMethod(accept)
-        methodMirror(request.body) match {
-          case (id: String, responseDoc: NodeSeq) =>
-            val newStateName = accept.transitionTo.getOrElse(template.initialState.name)
-            // TODO: handle accept.errors
-            // TODO: handle internal server errors
-            val statusCode = accept.response
-            new Status(statusCode).apply(transition(id, newStateName, responseDoc))
-          case other =>
-            throw new Exception(s"accept method returned unexpected value, $other")
-        }
+        commonHandling1(request, template.initialState, accept, None)
       case _ =>
         val id = request.uri.drop(pos + 1)
-        (for {
+        val maybeResult = for {
           currentState <- states.get(id)
           accept <- currentState.accepts find (a => a.httpVerb == request.method)
-        } yield {
-          val methodMirror = getMethod(accept)
-          methodMirror(id, request.body) match {
-            case responseDoc: NodeSeq =>
-              val newStateName = accept.transitionTo.getOrElse(currentState.name)
-              // TODO: handle accept.errors
-              // TODO: handle internal server errors
-              val statusCode = accept.response
-              new Status(statusCode).apply(transition(id, newStateName, responseDoc))
-            case other =>
-              throw new Exception(s"accept method returned unexpected value, $other")
-          }
-        }) getOrElse InternalServerError("TODO: add error message...")
+        } yield commonHandling1(request, currentState, accept, Some(id))
+        maybeResult getOrElse InternalServerError("TODO: add error message...")
     }
   }
 
-  def transitionTo(id: String, stateName: String): Unit =
-    states += id -> template.states(stateName)
+  private def commonHandling1(request: Request[NodeSeq], state: State, accept: Accept, maybeId: Option[String]): Result = {
+    val methodMirror = getMethod(accept)
+    val result = maybeId match {
+      case Some(id) => methodMirror(id, request.body)
+      case None => methodMirror(request.body)
+    }
+    (maybeId, result) match {
+      case (Some(id), responseDoc: NodeSeq) => commonHandling2(id, responseDoc, state, accept)
+      case (None, (id: String, responseDoc: NodeSeq)) => commonHandling2(id, responseDoc, state, accept)
+      case other => throw new Exception(s"accept method returned unexpected value, $other")
+    }
+  }
+
+  // TODO: handle accept.errors
+  // TODO: handle other errors => 500
+  private def commonHandling2(id: String, responseDoc: NodeSeq, state: State, accept: Accept): Result = {
+    val newStateName = accept.transitionTo.getOrElse(state.name)
+    val statusCode = accept.response
+    new Status(statusCode).apply(transition(id, newStateName, responseDoc))
+  }
 
   private def getMethod(accept: Accept): MethodMirror = {
     val methodSymbol = instanceMirror.symbol.info.member(TermName(accept.method)).asMethod
