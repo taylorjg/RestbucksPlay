@@ -13,6 +13,6 @@ class ApiRouter @Inject() extends SimpleRouter {
     new StateMachineManager(PaymentTemplate.template))
 
   override def routes: Routes = {
-    case request => stateMachineDispatcher.dispatch(request)
+    case _ => stateMachineDispatcher.dispatch
   }
 }

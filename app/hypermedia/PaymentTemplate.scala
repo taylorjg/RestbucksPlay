@@ -9,22 +9,22 @@ object PaymentTemplate {
 
   private final val PaymentExpectedState = State("PaymentExpected", NoTransitionTo,
     Seq(
-      Accept("PUT", "PaymentReceived", CREATED, Some("PaymentReceived"), Seq(Error("NoValidPayment", BAD_REQUEST)))),
+      Accept("PUT", "paymentReceived", CREATED, Some("PaymentReceived"), Seq(Error("NoValidPayment", BAD_REQUEST)))),
     Seq(
       Link("payment")))
 
   private final val PaymentReceivedState = State("PaymentReceived", NoTransitionTo,
     Seq(
-      Accept("GET", "GetReceipt", OK, NoTransitionTo, Seq(Error("NoSuchPayment", NOT_FOUND)))),
+      Accept("GET", "getReceipt", OK, NoTransitionTo, Seq(Error("NoSuchPayment", NOT_FOUND)))),
     Seq(
       Link("order", Some("/api/order/{id}")),
       Link("receipt")))
 
   final val template = StateMachineTemplate(
     "/api/payment/{id}",
-    "Restbucks.OrderingService",
+    "services.OrderingService",
     "application/vnd.restbucks+xml",
-    "http://relations.restbucks.com",
+    "/api/relations",
     PaymentCreatedState,
     Map(PaymentExpectedState.name -> PaymentExpectedState),
     Seq(PaymentReceivedState))
