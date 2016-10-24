@@ -6,6 +6,16 @@ object DapLink {
 
   import scala.xml.Node
 
+  def fromXML(node: Node): DapLink = {
+    val rel = node \@ "rel"
+    val uri = node \@ "uri"
+    val maybeMediaType = node attribute "mediaType" match {
+      case Some(mediaTypeAttribute) => Some(mediaTypeAttribute.text)
+      case _ => None
+    }
+    DapLink(rel, uri, maybeMediaType)
+  }
+
   implicit class DapLinkExtensions(dapLink: DapLink) {
     // TODO: handle DAP namespace - "http://schemas.restbucks.com/dap"
     def toXML: Node =
