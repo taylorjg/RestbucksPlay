@@ -39,7 +39,6 @@ object OrderTemplate {
 
   final val template = StateMachineTemplate(
     "/api/order/{id}",
-    "services.OrderingService",
     "application/vnd.restbucks+xml",
     "/api/relations",
     OrderCreatedState,

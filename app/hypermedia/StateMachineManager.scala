@@ -65,8 +65,13 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
     val state = template.states(stateName)
     states += id -> state
     val selfDapLink = DapLink("self", template.uriTemplate.replace("{id}", id), None)
-    // TODO: add the other DAP links from state.links (fold over a Seq of DapLink ?)
-    responseDoc addChild selfDapLink.toXML
+    val otherDapLinks = state.links map (link => {
+      val rel = s"${template.relationsIn.trim('/')}/${link.rel}"
+      val uri = (link.resource getOrElse uriTemplate).replace("{id}", "")
+      DapLink(rel, uri, Some(template.mediaType))
+    })
+    val dapLinks = selfDapLink +: otherDapLinks
+    dapLinks.foldLeft(responseDoc)((currentResponseDoc, dapLink) => currentResponseDoc addChild dapLink.toXML)
   }
 
   implicit class NodeSeqExtensions(ns: NodeSeq) {
@@ -80,4 +85,5 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
   implicit class StringExtensions(s: String) {
     def trim(c: Char): String = s.reverse.dropWhile(c => c == '/').reverse
   }
+
 }

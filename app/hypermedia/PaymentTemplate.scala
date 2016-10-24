@@ -22,7 +22,6 @@ object PaymentTemplate {
 
   final val template = StateMachineTemplate(
     "/api/payment/{id}",
-    "services.OrderingService",
     "application/vnd.restbucks+xml",
     "/api/relations",
     PaymentCreatedState,
