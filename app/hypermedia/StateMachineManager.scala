@@ -85,5 +85,4 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
   implicit class StringExtensions(s: String) {
     def trim(c: Char): String = s.reverse.dropWhile(c => c == '/').reverse
   }
-
 }

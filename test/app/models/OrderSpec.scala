@@ -9,7 +9,7 @@ class OrderSpec extends FlatSpec with Matchers {
   it should "serialise to XML and deserialise from XML properly" in {
     val orderItem1 = OrderItem("latte", "skim", "large")
     val orderItem2 = OrderItem("latte", "semi", "small")
-    val order1 = Order(42, "takeAway", Seq(orderItem1, orderItem2), "payment-expected")
+    val order1 = Order("takeAway", Seq(orderItem1, orderItem2), "payment-expected")
     val xml = order1.toXML
     val order2 = Order.fromXML(xml)
     order2 should be(order1)

@@ -13,7 +13,7 @@ class ApiRouterSpec extends PlaySpec
   import scala.xml.XML
 
   private val simpleOrder =
-    <order>
+    <order xmlns="http://schemas.restbucks.com">
       <location>takeAway</location>
       <item>
         <drink>latte</drink>
@@ -23,14 +23,13 @@ class ApiRouterSpec extends PlaySpec
     </order>
 
   "creating a new order" should {
+
     "return status code 201" in {
       val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder)
       val Some(result) = route(app, request)
       status(result) must be(CREATED)
     }
-  }
 
-  "creating a new order" should {
     "return a response body containing the expected hypermedia links" in {
       val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder)
       val Some(result) = route(app, request)

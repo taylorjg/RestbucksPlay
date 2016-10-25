@@ -1,10 +1,15 @@
 package services
 
+import models.Order
+
 class OrderingService {
 
   import scala.xml.NodeSeq
 
-  def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = ("123", <order></order>)
+  def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = {
+    val order = Order.fromXML(requestDoc.head).toXML
+    ("123", order)
+  }
 
   def getOrderStatus(id: String, requestDoc: NodeSeq): NodeSeq = ???
 

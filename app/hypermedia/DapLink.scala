@@ -17,11 +17,10 @@ object DapLink {
   }
 
   implicit class DapLinkExtensions(dapLink: DapLink) {
-    // TODO: handle DAP namespace - "http://schemas.restbucks.com/dap"
     def toXML: Node =
       dapLink.mediaType match {
-        case Some(mediaType) => <link rel={dapLink.rel} uri={dapLink.uri} mediaType={mediaType}></link>
-        case None => <link rel={dapLink.rel} uri={dapLink.uri}></link>
+        case Some(mediaType) => <dap:link rel={dapLink.rel} uri={dapLink.uri} mediaType={mediaType}></dap:link>
+        case None => <dap:link rel={dapLink.rel} uri={dapLink.uri}></dap:link>
       }
   }
 }
