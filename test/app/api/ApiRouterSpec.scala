@@ -36,12 +36,12 @@ class ApiRouterSpec extends PlaySpec
       val responseDoc = XML.loadString(contentAsString(result))
       val dapLinks = responseDoc \ "link" map DapLink.fromXML
       dapLinks.length must be(5)
-      dapLinks must contain (DapLink("self", "/api/order/123", None))
+      dapLinks must contain (DapLink("self", "/api/order/1", None))
       val mediaType = Some("application/vnd.restbucks+xml")
-      dapLinks must contain (DapLink("/api/relations/latest", "/api/order/123", mediaType))
-      dapLinks must contain (DapLink("/api/relations/update", "/api/order/123", mediaType))
-      dapLinks must contain (DapLink("/api/relations/payment", "/api/payment/123", mediaType))
-      dapLinks must contain (DapLink("/api/relations/cancel", "/api/order/123", mediaType))
+      dapLinks must contain (DapLink("/api/relations/latest", "/api/order/1", mediaType))
+      dapLinks must contain (DapLink("/api/relations/update", "/api/order/1", mediaType))
+      dapLinks must contain (DapLink("/api/relations/payment", "/api/payment/1", mediaType))
+      dapLinks must contain (DapLink("/api/relations/cancel", "/api/order/1", mediaType))
     }
   }
 }

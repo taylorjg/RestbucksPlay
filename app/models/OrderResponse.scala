@@ -2,6 +2,7 @@ package models
 
 case class OrderResponse(location: String,
                          items: Seq[OrderItem],
+                         id: Int,
                          status: String,
                          cost: Double) extends OrderBase
 
@@ -13,6 +14,7 @@ object OrderResponse {
     OrderResponse(
       (node \ "location").text,
       (node \ "item") map OrderItem.fromXML,
+      0,
       (node \ "status").text,
       (node \ "cost").text.toDouble
     )

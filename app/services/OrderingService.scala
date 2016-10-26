@@ -8,9 +8,9 @@ class OrderingService(db: DatabaseService) {
 
   def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = {
     val orderRequest = OrderRequest.fromXML(requestDoc.head)
-    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, "payment-expected", 2.99)
-    val id = "123"
-    (id, orderResponse.toXML)
+    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, 123, "payment-expected", 2.99)
+    val id = db.putOrder(orderResponse)
+    (id.toString, orderResponse.toXML)
   }
 
   def getOrderStatus(id: String, requestDoc: NodeSeq): NodeSeq = ???
