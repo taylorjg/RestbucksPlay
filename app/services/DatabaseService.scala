@@ -1,11 +1,12 @@
 package services
 
-import models.{Order, Payment}
+import models.{OrderResponse, Payment}
+import scala.xml.Node
 
 trait DatabaseService {
-  def newOrderFromXml(node: scala.xml.Node): Unit
-  def getOrder(id: String): Order
-  def updateOrder(order: Order): Unit
+  def newOrderFromXml(node: Node): Unit
+  def getOrder(id: String): OrderResponse
+  def updateOrder(order: OrderResponse): Unit
   def putPayment(id: String, payment: Payment): Unit
   def getPayment(id: String): Payment
   def deleteOrder(id: String): Unit

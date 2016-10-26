@@ -1,14 +1,16 @@
 package services
 
-import models.Order
+import models.{OrderRequest, OrderResponse}
 
-class OrderingService {
+class OrderingService(db: DatabaseService) {
 
   import scala.xml.NodeSeq
 
   def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = {
-    val order = Order.fromXML(requestDoc.head).toXML
-    ("123", order)
+    val orderRequest = OrderRequest.fromXML(requestDoc.head)
+    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, "payment-expected", 2.99)
+    val id = "123"
+    (id, orderResponse.toXML)
   }
 
   def getOrderStatus(id: String, requestDoc: NodeSeq): NodeSeq = ???
