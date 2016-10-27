@@ -1,12 +1,14 @@
 package hypermedia
 
+import play.api.mvc.RequestHeader
+
 class StateMachineManager(private val template: StateMachineTemplate, private val service: Any) {
 
+  import play.api.mvc.Result
   import play.api.mvc.Results._
-  import play.api.mvc.{Request, Result}
 
-  import scala.xml.{Elem, Node, NodeSeq}
   import scala.reflect.runtime.universe._
+  import scala.xml.{Elem, Node, NodeSeq}
 
   val uriTemplate: String = template.uriTemplate
 
@@ -16,7 +18,7 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
   def transitionTo(id: String, stateName: String): Unit =
     states += id -> template.states(stateName)
 
-  def process(request: Request[NodeSeq]): Result = {
+  def process(request: RequestHeader, maybeRequestDoc: Option[NodeSeq]): Result = {
 
     val pos = uriTemplate indexOf "/{"
     val baseUri = uriTemplate take pos
@@ -24,26 +26,29 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
 
     template.initialState.accepts find (a => a.httpVerb == request.method) match {
       case Some(accept) if trimmedRequestUri == baseUri =>
-        commonHandling1(request, template.initialState, accept, None)
+        commonHandling1(request, maybeRequestDoc, template.initialState, accept, None)
       case _ =>
         val id = request.uri.drop(pos + 1)
         val maybeResult = for {
           currentState <- states.get(id)
           accept <- currentState.accepts find (a => a.httpVerb == request.method)
-        } yield commonHandling1(request, currentState, accept, Some(id))
-        maybeResult getOrElse InternalServerError("TODO: add error message...")
+        } yield commonHandling1(request, maybeRequestDoc, currentState, accept, Some(id))
+        maybeResult getOrElse InternalServerError(s"Failed to lookup current state for id $id or failed to match verb ${request.method}")
     }
   }
 
-  private def commonHandling1(request: Request[NodeSeq], state: State, accept: Accept, maybeId: Option[String]): Result = {
+  private def commonHandling1(request: RequestHeader, maybeRequestDoc: Option[NodeSeq], state: State, accept: Accept, maybeId: Option[String]): Result = {
     val methodMirror = getMethod(accept)
-    val result = maybeId match {
-      case Some(id) => methodMirror(id, request.body)
-      case None => methodMirror(request.body)
+    val result = (maybeId, maybeRequestDoc) match {
+      case (Some(id), Some(requestDoc)) => methodMirror(id, requestDoc)
+      case (Some(id), None) => methodMirror(id, NodeSeq.Empty)
+      case (None, Some(requestDoc)) => methodMirror(requestDoc)
+      case _ => BadRequest
     }
     (maybeId, result) match {
       case (Some(id), responseDoc: NodeSeq) => commonHandling2(id, responseDoc, state, accept)
       case (None, (id: String, responseDoc: NodeSeq)) => commonHandling2(id, responseDoc, state, accept)
+      case (_, result: Result) => result
       case other => throw new Exception(s"accept method returned unexpected value, $other")
     }
   }
