@@ -1,8 +1,11 @@
 package hypermedia
 
 import play.api.mvc.RequestHeader
+import services.DatabaseService
 
-class StateMachineManager(private val template: StateMachineTemplate, private val service: Any) {
+class StateMachineManager(private val template: StateMachineTemplate,
+                          private val db: DatabaseService,
+                          private val service: Any) {
 
   import play.api.mvc.Result
   import play.api.mvc.Results._
@@ -12,11 +15,13 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
 
   val uriTemplate: String = template.uriTemplate
 
-  private var states: Map[String, State] = Map()
   private val instanceMirror = runtimeMirror(getClass.getClassLoader).reflect(service)
 
-  def transitionTo(id: String, stateName: String): Unit =
-    states += id -> template.states(stateName)
+  def transitionTo(id: String, stateName: String): Unit = {
+    val states = db.loadStatesMap(uriTemplate)
+    val newState = template.states(stateName)
+    db.saveStatesMap(uriTemplate, states.updated(id, newState))
+  }
 
   def process(request: RequestHeader, maybeRequestDoc: Option[NodeSeq]): Result = {
 
@@ -30,7 +35,7 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
       case _ =>
         val id = request.uri.drop(pos + 1)
         val maybeResult = for {
-          currentState <- states.get(id)
+          currentState <- db.loadStatesMap(uriTemplate).get(id)
           accept <- currentState.accepts find (a => a.httpVerb == request.method)
         } yield commonHandling1(request, maybeRequestDoc, currentState, accept, Some(id))
         maybeResult getOrElse InternalServerError(s"Failed to lookup current state for id $id or failed to match verb ${request.method}")
@@ -68,7 +73,8 @@ class StateMachineManager(private val template: StateMachineTemplate, private va
 
   private def transition(id: String, stateName: String, responseDoc: NodeSeq): NodeSeq = {
     val state = template.states(stateName)
-    states += id -> state
+    val states = db.loadStatesMap(uriTemplate)
+    db.saveStatesMap(uriTemplate, states.updated(id, state))
     val selfDapLink = DapLink("self", template.uriTemplate.replace("{id}", id), None)
     val otherDapLinks = state.links map (link => {
       val rel = s"${template.relationsIn.trim('/')}/${link.rel}"

@@ -9,8 +9,9 @@ class ApiRouterSpec extends PlaySpec
   with OneAppPerTest
   with Results {
 
-  import hypermedia.DapLink
-  import models.{OrderResponse, Payment}
+  import hypermedia.{DapLink, OrderTemplate}
+  import mocks.MockDatabaseService
+  import models.{OrderItem, OrderResponse}
   import org.scalatest.TestData
   import play.api.Application
   import play.api.inject.bind
@@ -21,26 +22,6 @@ class ApiRouterSpec extends PlaySpec
   import services.DatabaseService
 
   import scala.xml.XML
-
-  private class MockDatabaseService extends DatabaseService {
-
-    private var orders = Map[Int, OrderResponse]()
-    private var nextOrderId = 0
-
-    def reset(): Unit = orders = Map()
-    def addOrderResponse(id: Int, orderResponse: OrderResponse): Unit = orders = orders + (id -> orderResponse)
-    def setNextOrderId(id: Int): Unit = nextOrderId = id
-
-    override def putOrder(orderResponse: OrderResponse): Int = {
-      orders = orders + (nextOrderId -> orderResponse)
-      nextOrderId
-    }
-    override def getOrder(id: String): OrderResponse = orders(id.toInt)
-    override def deleteOrder(id: String): Unit = ???
-    override def updateOrder(order: OrderResponse): Unit = ???
-    override def putPayment(id: String, payment: Payment): Unit = ???
-    override def getPayment(id: String): Payment = ???
-  }
 
   private val mockDatabaseService = new MockDatabaseService
 
@@ -80,17 +61,18 @@ class ApiRouterSpec extends PlaySpec
   "getting an order" should {
     "return the correct order when it exists" in {
 
+      val id = 42
+      val orderItem = OrderItem("milk", "latte", "large")
+      val orderResponse = OrderResponse("takeAway", Seq(orderItem), id, "payment-expected", 2.99)
+
       mockDatabaseService.reset()
-      mockDatabaseService.setNextOrderId(42)
+      mockDatabaseService.addOrderResponse(orderResponse)
+      mockDatabaseService.setOrderState(OrderTemplate.template, id, "Unpaid")
 
-      val request1 = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder)
-      val Some(result1) = route(app, request1)
-      status(result1) must be(CREATED)
-
-      val request2 = FakeRequest("GET", "/api/order/42")
-      val Some(result2) = route(app, request2)
-      status(result2) must be(OK)
-      checkDapLinks(result2, 42)
+      val request = FakeRequest("GET", s"/api/order/$id")
+      val Some(result) = route(app, request)
+      status(result) must be(OK)
+      checkDapLinks(result, id)
     }
   }
 
