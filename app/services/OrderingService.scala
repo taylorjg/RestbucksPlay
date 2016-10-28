@@ -12,11 +12,8 @@ class OrderingService(db: DatabaseService) {
 
   def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = {
     val orderRequest = OrderRequest.fromXML(requestDoc.head)
-    // TODO: manage order ids in this class rather than inside DatabaseService...
-    // - need to persist next order id ?
-    // - need to be able to control next order id from inside unit tests ?
-    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, 0, PaymentExpected, 2.99)
-    val id = db.putOrder(orderResponse)
+    val id = db.nextOrderId()
+    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, id, PaymentExpected, 2.99)
     (id.toString, orderResponse.toXML)
   }
 

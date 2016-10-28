@@ -10,17 +10,19 @@ class InMemoryDatabaseService extends DatabaseService {
   private var resourcesToStatesMaps = Map[String, Map[String, State]]()
   private var currentOrderId = 0
 
+  override def nextOrderId(): Int = {
+    currentOrderId += 1
+    currentOrderId
+  }
+
   override def loadStatesMap(resource: String): Map[String, State] =
     resourcesToStatesMaps(resource)
 
   override def saveStatesMap(resource: String, states: Map[String, State]): Unit =
     resourcesToStatesMaps = resourcesToStatesMaps.updated(resource, states)
 
-  override def putOrder(orderResponse: OrderResponse): Int = {
-    currentOrderId += 1
+  override def putOrder(orderResponse: OrderResponse): Unit =
     orders = orders + (currentOrderId.toString -> orderResponse)
-    currentOrderId
-  }
 
   override def getOrder(id: String): OrderResponse =
     orders(id)
