@@ -1,18 +1,21 @@
 package services
 
-import models.{OrderRequest, OrderResponse, Payment, Receipt}
-import org.joda.time.DateTime
-
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-
 class OrderingService(db: DatabaseService) {
 
+  import OrderStatuses._
+  import models.{OrderRequest, OrderResponse, Payment, Receipt}
+  import org.joda.time.DateTime
+
+  import scala.concurrent.ExecutionContext.Implicits.global
+  import scala.concurrent.Future
   import scala.xml.NodeSeq
 
   def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = {
     val orderRequest = OrderRequest.fromXML(requestDoc.head)
-    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, 0, "payment-expected", 2.99)
+    // TODO: manage order ids in this class rather than inside DatabaseService...
+    // - need to persist next order id ?
+    // - need to be able to control next order id from inside unit tests ?
+    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, 0, PaymentExpected, 2.99)
     val id = db.putOrder(orderResponse)
     (id.toString, orderResponse.toXML)
   }
@@ -35,7 +38,7 @@ class OrderingService(db: DatabaseService) {
     val payment1 = Payment.fromXML(requestDoc.head)
     val payment2 = payment1.copy(paid = DateTime.now)
     val orderResponse1 = db.getOrder(id)
-    val orderResponse2 = orderResponse1.copy(status = "preparing")
+    val orderResponse2 = orderResponse1.copy(status = Preparing)
     db.updateOrder(orderResponse2)
     db.putPayment(id, payment2)
     prepareOrderAsync(id)
@@ -50,7 +53,7 @@ class OrderingService(db: DatabaseService) {
 
   def receiveOrder(id: String, requestDoc: NodeSeq): NodeSeq = {
     val orderResponse1 = db.getOrder(id)
-    val orderResponse2 = orderResponse1.copy(status = "taken")
+    val orderResponse2 = orderResponse1.copy(status = Taken)
     db.updateOrder(orderResponse2)
     orderResponse2.toXML
   }
@@ -69,7 +72,7 @@ class OrderingService(db: DatabaseService) {
   private def baristaWork(id: String) = {
     Thread.sleep(2 * 1000)
     val orderResponse1 = db.getOrder(id)
-    val orderResponse2 = orderResponse1.copy(status = "ready")
+    val orderResponse2 = orderResponse1.copy(status = Ready)
     db.updateOrder(orderResponse2)
   }
 }

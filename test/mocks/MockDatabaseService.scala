@@ -14,7 +14,7 @@ class MockDatabaseService extends DatabaseService {
   def reset(): Unit = orders = Map()
   def addOrderResponse(orderResponse: OrderResponse): Unit = orders = orders + (orderResponse.id -> orderResponse)
   def setNextOrderId(id: Int): Unit = nextOrderId = id
-  def setOrderState(template: StateMachineTemplate, id: Int, stateName: String): Unit = {
+  def setResourceState(template: StateMachineTemplate, id: Int, stateName: String): Unit = {
     val k = template.uriTemplate
     val v = Map(id.toString -> template.states(stateName))
     resourcesToStatesMaps = resourcesToStatesMaps + (k -> v)
