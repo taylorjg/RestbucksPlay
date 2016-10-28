@@ -1,4 +1,4 @@
-package mocks
+package api
 
 import hypermedia.{State, StateMachineTemplate}
 import models.{OrderResponse, Payment}
@@ -11,7 +11,6 @@ class MockDatabaseService extends DatabaseService {
   private var resourcesToStatesMaps = Map[String, Map[String, State]]()
   private var nextOrderId = 0
 
-  def reset(): Unit = orders = Map()
   def addOrderResponse(orderResponse: OrderResponse): Unit = orders = orders + (orderResponse.id -> orderResponse)
   def setNextOrderId(id: Int): Unit = nextOrderId = id
   def setResourceState(template: StateMachineTemplate, id: Int, stateName: String): Unit = {
