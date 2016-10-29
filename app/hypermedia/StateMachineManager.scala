@@ -43,6 +43,7 @@ class StateMachineManager(private val template: StateMachineTemplate,
   }
 
   private def commonHandling1(request: RequestHeader, maybeRequestDoc: Option[NodeSeq], state: State, accept: Accept, maybeId: Option[String]): Result = {
+    val baseUri = "http" + (if (request.secure) "s" else "") + "://" + request.host
     val methodMirror = getMethod(accept)
     val result = (maybeId, maybeRequestDoc) match {
       case (Some(id), Some(requestDoc)) => methodMirror(id, requestDoc)
@@ -51,8 +52,8 @@ class StateMachineManager(private val template: StateMachineTemplate,
       case _ => BadRequest
     }
     (maybeId, result) match {
-      case (Some(id), responseDoc: NodeSeq) => commonHandling2(id, responseDoc, state, accept)
-      case (None, (id: String, responseDoc: NodeSeq)) => commonHandling2(id, responseDoc, state, accept)
+      case (Some(id), responseDoc: NodeSeq) => commonHandling2(baseUri, id, responseDoc, state, accept)
+      case (None, (id: String, responseDoc: NodeSeq)) => commonHandling2(baseUri, id, responseDoc, state, accept)
       case (_, result: Result) => result
       case other => throw new Exception(s"accept method returned unexpected value, $other")
     }
@@ -60,10 +61,10 @@ class StateMachineManager(private val template: StateMachineTemplate,
 
   // TODO: handle accept.errors
   // TODO: handle other errors => 500
-  private def commonHandling2(id: String, responseDoc: NodeSeq, state: State, accept: Accept): Result = {
+  private def commonHandling2(baseUri: String, id: String, responseDoc: NodeSeq, state: State, accept: Accept): Result = {
     val newStateName = accept.transitionTo.getOrElse(state.name)
     val statusCode = accept.response
-    new Status(statusCode).apply(transition(id, newStateName, responseDoc))
+    new Status(statusCode).apply(transition(baseUri, id, newStateName, responseDoc))
   }
 
   private def getMethod(accept: Accept): MethodMirror = {
@@ -71,14 +72,16 @@ class StateMachineManager(private val template: StateMachineTemplate,
     instanceMirror.reflectMethod(methodSymbol)
   }
 
-  private def transition(id: String, stateName: String, responseDoc: NodeSeq): NodeSeq = {
+  private def absUri(baseUri: String, path: String): String = s"$baseUri$path"
+
+  private def transition(baseUri: String, id: String, stateName: String, responseDoc: NodeSeq): NodeSeq = {
     val state = template.states(stateName)
     val states = db.loadStatesMap(uriTemplate)
     db.saveStatesMap(uriTemplate, states.updated(id, state))
-    val selfDapLink = DapLink("self", template.uriTemplate.replace("{id}", id), None)
+    val selfDapLink = DapLink("self", absUri(baseUri, template.uriTemplate.replace("{id}", id)), None)
     val otherDapLinks = state.links map (link => {
       val rel = s"${template.relationsIn.trim('/')}/${link.rel}"
-      val uri = (link.resource getOrElse uriTemplate).replace("{id}", id)
+      val uri = absUri(baseUri, (link.resource getOrElse uriTemplate).replace("{id}", id))
       DapLink(rel, uri, Some(template.mediaType))
     })
     val dapLinks = selfDapLink +: otherDapLinks

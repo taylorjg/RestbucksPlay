@@ -50,11 +50,13 @@ class ApiSpec extends PlaySpec
       2.99)
 
   private final val MediaType = Some("application/vnd.restbucks+xml")
+  private final val Host = "localhost:9000"
+  private final val HostHeader = "host" -> Host
 
   "creating a new order" should {
     "return a response body containing the expected hypermedia links" in {
       mockDatabaseService.setNextOrderId(42)
-      val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder)
+      val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(CREATED)
       verifyUnpaidOrderHypermediaLinks(result, 42)
@@ -66,7 +68,7 @@ class ApiSpec extends PlaySpec
       val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
-      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}")
+      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(OK)
       verifyUnpaidOrderHypermediaLinks(result, orderResponse.id)
@@ -78,7 +80,7 @@ class ApiSpec extends PlaySpec
       val orderResponse = simpleOrderResponse(OrderStatuses.Preparing)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Preparing")
-      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}")
+      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(OK)
       verifyPreparingOrderHypermediaLinks(result, orderResponse.id)
@@ -90,7 +92,7 @@ class ApiSpec extends PlaySpec
       val orderResponse = simpleOrderResponse(OrderStatuses.Ready)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Ready")
-      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}")
+      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(OK)
       verifyReadyOrderHypermediaLinks(result, orderResponse.id)
@@ -101,27 +103,29 @@ class ApiSpec extends PlaySpec
     val responseDoc = XML.loadString(contentAsString(result))
     val dapLinks = responseDoc \ "link" map DapLink.fromXML
     dapLinks.length must be(5)
-    dapLinks must contain(DapLink("self", s"/api/order/$id", None))
-    dapLinks must contain(DapLink("/api/relations/latest", s"/api/order/$id", MediaType))
-    dapLinks must contain(DapLink("/api/relations/update", s"/api/order/$id", MediaType))
-    dapLinks must contain(DapLink("/api/relations/payment", s"/api/payment/$id", MediaType))
-    dapLinks must contain(DapLink("/api/relations/cancel", s"/api/order/$id", MediaType))
+    dapLinks must contain(DapLink("self", absUri(s"/api/order/$id"), None))
+    dapLinks must contain(DapLink("/api/relations/latest", absUri(s"/api/order/$id"), MediaType))
+    dapLinks must contain(DapLink("/api/relations/update", absUri(s"/api/order/$id"), MediaType))
+    dapLinks must contain(DapLink("/api/relations/payment", absUri(s"/api/payment/$id"), MediaType))
+    dapLinks must contain(DapLink("/api/relations/cancel", absUri(s"/api/order/$id"), MediaType))
   }
 
   private def verifyPreparingOrderHypermediaLinks(result: Future[Result], id: Int): Unit = {
     val responseDoc = XML.loadString(contentAsString(result))
     val dapLinks = responseDoc \ "link" map DapLink.fromXML
     dapLinks.length must be(2)
-    dapLinks must contain(DapLink("self", s"/api/order/$id", None))
-    dapLinks must contain(DapLink("/api/relations/latest", s"/api/order/$id", MediaType))
+    dapLinks must contain(DapLink("self", absUri(s"/api/order/$id"), None))
+    dapLinks must contain(DapLink("/api/relations/latest", absUri(s"/api/order/$id"), MediaType))
   }
 
   private def verifyReadyOrderHypermediaLinks(result: Future[Result], id: Int): Unit = {
     val responseDoc = XML.loadString(contentAsString(result))
     val dapLinks = responseDoc \ "link" map DapLink.fromXML
     dapLinks.length must be(3)
-    dapLinks must contain(DapLink("self", s"/api/order/$id", None))
-    dapLinks must contain(DapLink("/api/relations/latest", s"/api/order/$id", MediaType))
-    dapLinks must contain(DapLink("/api/relations/receive", s"/api/order/$id", MediaType))
+    dapLinks must contain(DapLink("self", absUri(s"/api/order/$id"), None))
+    dapLinks must contain(DapLink("/api/relations/latest", absUri(s"/api/order/$id"), MediaType))
+    dapLinks must contain(DapLink("/api/relations/receive", absUri(s"/api/order/$id"), MediaType))
   }
+
+  private def absUri(path: String): String = s"http://$Host$path"
 }
