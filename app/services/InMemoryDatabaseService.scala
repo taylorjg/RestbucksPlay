@@ -16,7 +16,7 @@ class InMemoryDatabaseService extends DatabaseService {
   }
 
   override def loadStatesMap(resource: String): Map[String, State] =
-    resourcesToStatesMaps(resource)
+    resourcesToStatesMaps.getOrElse(resource, Map())
 
   override def saveStatesMap(resource: String, states: Map[String, State]): Unit =
     resourcesToStatesMaps = resourcesToStatesMaps.updated(resource, states)
