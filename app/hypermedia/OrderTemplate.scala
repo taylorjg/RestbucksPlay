@@ -43,8 +43,11 @@ object OrderTemplate {
     "/api/relations",
     OrderCreatedState,
     Map(
+      OrderCreatedState.name -> OrderCreatedState,
       UnpaidState.name -> UnpaidState,
       PreparingState.name -> PreparingState,
-      ReadyState.name -> ReadyState),
+      ReadyState.name -> ReadyState,
+      DeliveredState.name -> DeliveredState,
+      CancelledState.name -> CancelledState),
     Seq(DeliveredState, CancelledState))
 }

@@ -44,7 +44,7 @@ class ApiSpec extends PlaySpec
   private def simpleOrderResponse(status: String): OrderResponse =
     OrderResponse(
       "takeAway",
-      Seq(OrderItem("milk", "latte", "large")),
+      Seq(OrderItem("latte", "skim", "large")),
       42,
       status,
       2.99)
@@ -54,6 +54,7 @@ class ApiSpec extends PlaySpec
   private final val HostHeader = "host" -> Host
 
   "creating a new order" should {
+
     "return a response body containing the expected hypermedia links" in {
       mockDatabaseService.setNextOrderId(42)
       val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder).withHeaders(HostHeader)
@@ -61,6 +62,28 @@ class ApiSpec extends PlaySpec
       status(result) must be(CREATED)
       verifyUnpaidOrderHypermediaLinks(result, 42)
     }
+
+    "return a response body containing the correct location, items and status" in {
+      mockDatabaseService.setNextOrderId(42)
+      val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder).withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      val responseDoc = XML.loadString(contentAsString(result))
+      val orderResponse = OrderResponse.fromXML(responseDoc.head)
+      orderResponse.location must be("takeAway")
+      orderResponse.items must be(Seq(OrderItem("latte", "skim", "large")))
+      orderResponse.status must be("payment-expected")
+    }
+
+//  This test is commented out until we have implemented a menu service for calculating the cost of an order.
+//
+//    "return a response body containing the correct cost" in {
+//      mockDatabaseService.setNextOrderId(42)
+//      val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder).withHeaders(HostHeader)
+//      val Some(result) = route(app, request)
+//      val responseDoc = XML.loadString(contentAsString(result))
+//      val orderResponse = OrderResponse.fromXML(responseDoc.head)
+//      orderResponse.cost must be(3.99)
+//    }
   }
 
   "getting an order in the Unpaid state" should {
@@ -98,6 +121,63 @@ class ApiSpec extends PlaySpec
       verifyReadyOrderHypermediaLinks(result, orderResponse.id)
     }
   }
+
+  "deleting an order in the Unpaid state" should {
+    "something" in {
+      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+      mockDatabaseService.addOrderResponse(orderResponse)
+      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+      val request = FakeRequest("DELETE", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(OK)
+      val responseContentLength = contentAsBytes(result)
+      responseContentLength.length must be(0)
+    }
+  }
+
+  "deleting an order in the Ready state" should {
+    "something" in {
+      val orderResponse = simpleOrderResponse(OrderStatuses.Ready)
+      mockDatabaseService.addOrderResponse(orderResponse)
+      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Ready")
+      val request = FakeRequest("DELETE", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(OK)
+      val responseDoc = XML.loadString(contentAsString(result))
+      val receivedOrderResponse = OrderResponse.fromXML(responseDoc.head)
+      receivedOrderResponse.location must be("takeAway")
+      receivedOrderResponse.items must be(Seq(OrderItem("latte", "skim", "large")))
+      receivedOrderResponse.status must be("taken")
+    }
+  }
+
+//  This test is commented out until we have fixed the gap re creating a payment resource when an order is created.
+//
+//  "putting a payment" should {
+//    "something" in {
+//      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+//      mockDatabaseService.addOrderResponse(orderResponse)
+//      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+//      val payment =
+//        <payment>
+//          <amount>2.99</amount>
+//          <cardHolder>MR BRUCE FORSYTH</cardHolder>
+//          <cardNumber>4111111111111111</cardNumber>
+//          <expiryMonth>10</expiryMonth>
+//          <expiryYear>2018</expiryYear>
+//        </payment>
+//      val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(payment).withHeaders(HostHeader)
+//      val Some(result) = route(app, request)
+//      status(result) must be(OK)
+//      println(contentAsString(result))
+//    }
+//  }
+
+//  "getting a payment in the PaymentReceived state" should {
+//    "something" in {
+//      // GET /api/payment/$id
+//    }
+//  }
 
   private def verifyUnpaidOrderHypermediaLinks(result: Future[Result], id: Int): Unit = {
     val responseDoc = XML.loadString(contentAsString(result))

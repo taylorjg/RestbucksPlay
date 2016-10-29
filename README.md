@@ -16,8 +16,9 @@ This is a bit sketchy at the moment but I am planning something along these line
 * Add error handling
 * Deploy to Heroku
 * Write a Gatling script to exercise the API
-* Write a UI to visualise the traffic
+* Write a UI to exercise the API
 * Write a UI to summarise the transactions
+* Write a UI to visualise the traffic
 * Change the implementation to use Akka actors / async action methods
 * Write a parser for the _Restbucks hypermedia DSL_
     * Using [Parser Combinators API](http://www.scala-lang.org/api/2.11.8/scala-parser-combinators) ?

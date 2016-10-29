@@ -14,6 +14,8 @@ class OrderingService(db: DatabaseService) {
     val orderRequest = OrderRequest.fromXML(requestDoc.head)
     val id = db.nextOrderId()
     val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, id, PaymentExpected, 2.99)
+    // TODO: Pass Seq(StateMachineManager) to each service method
+    // TODO: paymentStateMachineManager.createResource(id.toString)
     (id.toString, orderResponse.toXML)
   }
 
@@ -48,6 +50,11 @@ class OrderingService(db: DatabaseService) {
     receipt.toXML
   }
 
+  def orderPrepared(orderResponse: OrderResponse): Unit = {
+    db.updateOrder(orderResponse.copy(status = Ready))
+    // TODO: orderStateMachineManager.transitionTo(orderResponse.id.toString, "Ready");
+  }
+
   def receiveOrder(id: String, requestDoc: NodeSeq): NodeSeq = {
     val orderResponse1 = db.getOrder(id)
     val orderResponse2 = orderResponse1.copy(status = Taken)
@@ -67,9 +74,8 @@ class OrderingService(db: DatabaseService) {
   }
 
   private def baristaWork(id: String) = {
-    Thread.sleep(2 * 1000)
-    val orderResponse1 = db.getOrder(id)
-    val orderResponse2 = orderResponse1.copy(status = Ready)
-    db.updateOrder(orderResponse2)
+    Thread.sleep(2000)
+    val orderResponse = db.getOrder(id)
+    orderPrepared(orderResponse)
   }
 }

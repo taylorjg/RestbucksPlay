@@ -25,6 +25,9 @@ object PaymentTemplate {
     "application/vnd.restbucks+xml",
     "/api/relations",
     PaymentCreatedState,
-    Map(PaymentExpectedState.name -> PaymentExpectedState),
+    Map(
+      PaymentCreatedState.name -> PaymentCreatedState,
+      PaymentExpectedState.name -> PaymentExpectedState,
+      PaymentReceivedState.name -> PaymentReceivedState),
     Seq(PaymentReceivedState))
 }

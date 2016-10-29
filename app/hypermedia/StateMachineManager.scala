@@ -17,6 +17,16 @@ class StateMachineManager(private val template: StateMachineTemplate,
 
   private val instanceMirror = runtimeMirror(getClass.getClassLoader).reflect(service)
 
+  def createResource(id: String): Unit = {
+    def followTransitionTo(state: State): State =
+      state.transitionTo match {
+        case Some(stateName) => followTransitionTo(template.states(stateName))
+        case None => state
+      }
+    val state = followTransitionTo(template.initialState)
+    transitionTo(id, state.name)
+  }
+
   def transitionTo(id: String, stateName: String): Unit = {
     val states = db.loadStatesMap(uriTemplate)
     val newState = template.states(stateName)
@@ -75,20 +85,25 @@ class StateMachineManager(private val template: StateMachineTemplate,
   private def absUri(baseUri: String, path: String): String = s"$baseUri$path"
 
   private def transition(baseUri: String, id: String, stateName: String, responseDoc: NodeSeq): NodeSeq = {
+
     val state = template.states(stateName)
     val states = db.loadStatesMap(uriTemplate)
     db.saveStatesMap(uriTemplate, states.updated(id, state))
-    val selfDapLink = DapLink("self", absUri(baseUri, template.uriTemplate.replace("{id}", id)), None)
-    val otherDapLinks = state.links map (link => {
-      val rel = s"${template.relationsIn.trim('/')}/${link.rel}"
-      val uri = absUri(baseUri, (link.resource getOrElse uriTemplate).replace("{id}", id))
-      DapLink(rel, uri, Some(template.mediaType))
-    })
-    val dapLinks = selfDapLink +: otherDapLinks
-    dapLinks.foldLeft(responseDoc)((currentResponseDoc, dapLink) => currentResponseDoc addChild dapLink.toXML)
+
+    if (!(template.finalStates contains state)) {
+      val selfDapLink = DapLink("self", absUri(baseUri, template.uriTemplate.replace("{id}", id)), None)
+      val otherDapLinks = state.links map (link => {
+        val rel = s"${template.relationsIn.trim('/')}/${link.rel}"
+        val uri = absUri(baseUri, (link.resource getOrElse uriTemplate).replace("{id}", id))
+        DapLink(rel, uri, Some(template.mediaType))
+      })
+      val dapLinks = selfDapLink +: otherDapLinks
+      dapLinks.foldLeft(responseDoc)((currentResponseDoc, dapLink) => currentResponseDoc addChild dapLink.toXML)
+    }
+    else responseDoc
   }
 
-  implicit class NodeSeqExtensions(ns: NodeSeq) {
+  implicit class NodeSeqOps(ns: NodeSeq) {
     def addChild(child: Node): NodeSeq =
       ns.headOption match {
         case Some(e: Elem) => e.copy(child = e.child ++ child)
@@ -96,7 +111,7 @@ class StateMachineManager(private val template: StateMachineTemplate,
       }
   }
 
-  implicit class StringExtensions(s: String) {
+  implicit class StringOps(s: String) {
     def trim(c: Char): String = s.reverse.dropWhile(c => c == '/').reverse
   }
 }
