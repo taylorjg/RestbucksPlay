@@ -1,18 +1,18 @@
 package api
 
 import hypermedia.{State, StateMachineTemplate}
-import models.{OrderResponse, Payment}
+import models.{OrderResponse, PaymentResponse}
 import services.DatabaseService
 
 class MockDatabaseService extends DatabaseService {
 
   private var orders = Map[Int, OrderResponse]()
-  private var payments = Map[Int, Payment]()
+  private var payments = Map[Int, PaymentResponse]()
   private var resourcesToStatesMaps = Map[String, Map[String, State]]()
   private var orderId = 0
 
   def addOrderResponse(orderResponse: OrderResponse): Unit = orders = orders + (orderResponse.id -> orderResponse)
-  def addPayment(id: Int, payment: Payment): Unit = payments = payments + (id -> payment)
+  def addPaymentResponse(id: Int, paymentResponse: PaymentResponse): Unit = payments = payments + (id -> paymentResponse)
   def setNextOrderId(id: Int): Unit = orderId = id
   def setResourceState(template: StateMachineTemplate, id: Int, stateName: String): Unit = {
     val k = template.uriTemplate
@@ -41,9 +41,9 @@ class MockDatabaseService extends DatabaseService {
   override def updateOrder(orderResponse: OrderResponse): Unit =
     orders = orders.updated(orderResponse.id, orderResponse)
 
-  override def putPayment(id: String, payment: Payment): Unit =
-    payments = payments + (id.toInt -> payment)
+  override def putPayment(id: String, paymentResponse: PaymentResponse): Unit =
+    payments = payments + (id.toInt -> paymentResponse)
 
-  override def getPayment(id: String): Payment =
+  override def getPayment(id: String): PaymentResponse =
     payments(id.toInt)
 }

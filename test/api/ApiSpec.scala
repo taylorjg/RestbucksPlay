@@ -1,7 +1,6 @@
 package api
 
 import hypermedia.PaymentTemplate
-import models.Payment
 import org.joda.time.DateTime
 import org.scalatestplus.play.{OneAppPerTest, PlaySpec}
 import play.api.mvc.Results
@@ -13,7 +12,7 @@ class ApiSpec extends PlaySpec
   with Results {
 
   import hypermedia.{DapLink, OrderTemplate}
-  import models.{OrderItem, OrderResponse}
+  import models._
   import org.scalatest.TestData
   import play.api.Application
   import play.api.inject.bind
@@ -126,7 +125,7 @@ class ApiSpec extends PlaySpec
   }
 
   "deleting an order in the Unpaid state" should {
-    "something" in {
+    "return a response body with no content" in {
       val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
@@ -139,7 +138,7 @@ class ApiSpec extends PlaySpec
   }
 
   "deleting an order in the Ready state" should {
-    "something" in {
+    "return a response body containing the correct location, items and status" in {
       val orderResponse = simpleOrderResponse(OrderStatuses.Ready)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Ready")
@@ -155,13 +154,11 @@ class ApiSpec extends PlaySpec
   }
 
   "putting a payment" should {
-    "something" in {
+    "return OK" in {
       val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
       mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentExpected")
-      // TODO: create separate PaymentRequest and PaymentResponse case classes
-      // TODO: get rid of <paid>2016-10-30T10:36:55.278Z</paid> below
       val payment =
         <payment>
           <amount>2.99</amount>
@@ -169,19 +166,19 @@ class ApiSpec extends PlaySpec
           <cardNumber>4111111111111111</cardNumber>
           <expiryMonth>10</expiryMonth>
           <expiryYear>2018</expiryYear>
-          <paid>2016-10-30T10:36:55.278Z</paid>
         </payment>
       val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(payment).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(CREATED)
+      // TODO: verify the content and links in the response body
     }
   }
 
   "getting a payment in the PaymentReceived state" should {
-    "something" in {
+    "return OK" in {
       val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
-      val payment = Payment(2.99, "MR BRUCE FORSYTH", "4111111111111111", 10, 2018, DateTime.now)
-      mockDatabaseService.addPayment(orderResponse.id, payment)
+      val paymentResponse = PaymentResponse(2.99, "MR BRUCE FORSYTH", "4111111111111111", 10, 2018, DateTime.now)
+      mockDatabaseService.addPaymentResponse(orderResponse.id, paymentResponse)
       mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentReceived")
       val request = FakeRequest("GET", s"/api/payment/${orderResponse.id}").withHeaders(HostHeader)
       val Some(result) = route(app, request)

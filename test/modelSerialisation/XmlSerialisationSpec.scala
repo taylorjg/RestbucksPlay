@@ -9,15 +9,22 @@ class XmlSerialisationSpec extends WordSpec with Matchers {
 
   "serialisation to and from XML" should {
 
-    "work correctly for Payment" in {
-      val payment1 = Payment(12.34, "MR BRUCE FORSYTH", "4111111111111111", 10, 2018, DateTime.now())
-      val xml = payment1.toXML
-      val payment2 = Payment.fromXML(xml)
-      payment2 should be(payment1)
+    "work correctly for PaymentRequest" in {
+      val paymentRequest1 = PaymentRequest(12.34, "MR BRUCE FORSYTH", "4111111111111111", 10, 2018)
+      val xml = paymentRequest1.toXML
+      val paymentRequest2 = PaymentRequest.fromXML(xml)
+      paymentRequest2 should be(paymentRequest1)
+    }
+
+    "work correctly for PaymentResponse" in {
+      val paymentResponse1 = PaymentResponse(12.34, "MR BRUCE FORSYTH", "4111111111111111", 10, 2018, DateTime.now)
+      val xml = paymentResponse1.toXML
+      val paymentResponse2 = PaymentResponse.fromXML(xml)
+      paymentResponse2 should be(paymentResponse1)
     }
 
     "work correctly for Receipt" in {
-      val receipt1 = Receipt(12.34, DateTime.now())
+      val receipt1 = Receipt(12.34, DateTime.now)
       val xml = receipt1.toXML
       val receipt2 = Receipt.fromXML(xml)
       receipt2 should be(receipt1)

@@ -13,8 +13,8 @@ object Receipt {
       (node \ "amount").text.toDouble,
       new DateTime((node \ "paid").text))
 
-  def fromPayment(payment: Payment): Receipt =
-    Receipt(payment.amount, payment.paid)
+  def fromPaymentResponse(paymentResponse: PaymentResponse): Receipt =
+    Receipt(paymentResponse.amount, paymentResponse.paid)
 
   implicit class ReceiptExtensions(receipt: Receipt) {
     def toXML: Node =
