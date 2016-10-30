@@ -18,12 +18,12 @@ class StateMachineManager(private val template: StateMachineTemplate,
   private val instanceMirror = runtimeMirror(getClass.getClassLoader).reflect(service)
 
   def createResource(id: String): Unit = {
-    def followTransitionTo(state: State): State =
+    def followStateTransitionTo(state: State): State =
       state.transitionTo match {
-        case Some(stateName) => followTransitionTo(template.states(stateName))
+        case Some(stateName) => followStateTransitionTo(template.states(stateName))
         case None => state
       }
-    val state = followTransitionTo(template.initialState)
+    val state = followStateTransitionTo(template.initialState)
     transitionTo(id, state.name)
   }
 
@@ -33,7 +33,9 @@ class StateMachineManager(private val template: StateMachineTemplate,
     db.saveStatesMap(uriTemplate, states.updated(id, newState))
   }
 
-  def process(request: RequestHeader, maybeRequestDoc: Option[NodeSeq]): Result = {
+  def process(stateMachineManagers: Map[String, StateMachineManager],
+              request: RequestHeader,
+              requestDoc: NodeSeq): Result = {
 
     val pos = uriTemplate indexOf "/{"
     val baseUri = uriTemplate take pos
@@ -41,25 +43,28 @@ class StateMachineManager(private val template: StateMachineTemplate,
 
     template.initialState.accepts find (a => a.httpVerb == request.method) match {
       case Some(accept) if trimmedRequestUri == baseUri =>
-        commonHandling1(request, maybeRequestDoc, template.initialState, accept, None)
+        commonHandling1(stateMachineManagers, request, requestDoc, template.initialState, accept, None)
       case _ =>
         val id = request.uri.drop(pos + 1)
         val maybeResult = for {
           currentState <- db.loadStatesMap(uriTemplate).get(id)
           accept <- currentState.accepts find (a => a.httpVerb == request.method)
-        } yield commonHandling1(request, maybeRequestDoc, currentState, accept, Some(id))
+        } yield commonHandling1(stateMachineManagers, request, requestDoc, currentState, accept, Some(id))
         maybeResult getOrElse InternalServerError(s"Failed to lookup current state for id $id or failed to match verb ${request.method}")
     }
   }
 
-  private def commonHandling1(request: RequestHeader, maybeRequestDoc: Option[NodeSeq], state: State, accept: Accept, maybeId: Option[String]): Result = {
+  private def commonHandling1(stateMachineManagers: Map[String, StateMachineManager],
+                              request: RequestHeader,
+                              requestDoc: NodeSeq,
+                              state: State,
+                              accept: Accept,
+                              maybeId: Option[String]): Result = {
     val baseUri = "http" + (if (request.secure) "s" else "") + "://" + request.host
     val methodMirror = getMethod(accept)
-    val result = (maybeId, maybeRequestDoc) match {
-      case (Some(id), Some(requestDoc)) => methodMirror(id, requestDoc)
-      case (Some(id), None) => methodMirror(id, NodeSeq.Empty)
-      case (None, Some(requestDoc)) => methodMirror(requestDoc)
-      case _ => BadRequest
+    val result = maybeId match {
+      case Some(id) => methodMirror(stateMachineManagers, requestDoc, id)
+      case None => methodMirror(stateMachineManagers, requestDoc)
     }
     (maybeId, result) match {
       case (Some(id), responseDoc: NodeSeq) => commonHandling2(baseUri, id, responseDoc, state, accept)

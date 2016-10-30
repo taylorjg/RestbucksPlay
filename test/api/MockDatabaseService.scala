@@ -12,6 +12,7 @@ class MockDatabaseService extends DatabaseService {
   private var orderId = 0
 
   def addOrderResponse(orderResponse: OrderResponse): Unit = orders = orders + (orderResponse.id -> orderResponse)
+  def addPayment(id: Int, payment: Payment): Unit = payments = payments + (id -> payment)
   def setNextOrderId(id: Int): Unit = orderId = id
   def setResourceState(template: StateMachineTemplate, id: Int, stateName: String): Unit = {
     val k = template.uriTemplate

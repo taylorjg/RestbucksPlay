@@ -3,6 +3,7 @@ package services
 class OrderingService(db: DatabaseService) {
 
   import OrderStatuses._
+  import hypermedia.StateMachineManager
   import models.{OrderRequest, OrderResponse, Payment, Receipt}
   import org.joda.time.DateTime
 
@@ -10,19 +11,19 @@ class OrderingService(db: DatabaseService) {
   import scala.concurrent.Future
   import scala.xml.NodeSeq
 
-  def newOrder(requestDoc: NodeSeq): (String, NodeSeq) = {
+  def newOrder(stateMachineManagers: Map[String, StateMachineManager], requestDoc: NodeSeq): (String, NodeSeq) = {
     val orderRequest = OrderRequest.fromXML(requestDoc.head)
     val id = db.nextOrderId()
     val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, id, PaymentExpected, 2.99)
-    // TODO: Pass Seq(StateMachineManager) to each service method
-    // TODO: paymentStateMachineManager.createResource(id.toString)
+    val paymentStateMachineManager = stateMachineManagers("payment")
+    paymentStateMachineManager.createResource(id.toString)
     (id.toString, orderResponse.toXML)
   }
 
-  def getOrderStatus(id: String, requestDoc: NodeSeq): NodeSeq =
+  def getOrderStatus(stateMachineManagers: Map[String, StateMachineManager], requestDoc: NodeSeq, id: String): NodeSeq =
     db.getOrder(id).toXML
 
-  def updateOrder(id: String, requestDoc: NodeSeq): NodeSeq = {
+  def updateOrder(stateMachineManagers: Map[String, StateMachineManager], requestDoc: NodeSeq, id: String): NodeSeq = {
     val orderRequest = OrderRequest.fromXML(requestDoc.head)
     val orderResponse1 = db.getOrder(id)
     val orderResponse2 = orderResponse1.copy(
@@ -33,18 +34,19 @@ class OrderingService(db: DatabaseService) {
     orderResponse2.toXML
   }
 
-  def paymentReceived(id: String, requestDoc: NodeSeq): NodeSeq = {
+  def paymentReceived(stateMachineManagers: Map[String, StateMachineManager], requestDoc: NodeSeq, id: String): NodeSeq = {
     val payment1 = Payment.fromXML(requestDoc.head)
     val payment2 = payment1.copy(paid = DateTime.now)
     val orderResponse1 = db.getOrder(id)
     val orderResponse2 = orderResponse1.copy(status = Preparing)
     db.updateOrder(orderResponse2)
     db.putPayment(id, payment2)
-    prepareOrderAsync(id)
+    val orderStateMachineManager = stateMachineManagers("order")
+    prepareOrderAsync(id) // TODO: pass in orderStateMachineManager
     payment2.toXML
   }
 
-  def getReceipt(id: String, requestDoc: NodeSeq): NodeSeq = {
+  def getReceipt(stateMachineManagers: Map[String, StateMachineManager], requestDoc: NodeSeq, id: String): NodeSeq = {
     val payment = db.getPayment(id)
     val receipt: Receipt = Receipt.fromPayment(payment)
     receipt.toXML
@@ -55,21 +57,23 @@ class OrderingService(db: DatabaseService) {
     // TODO: orderStateMachineManager.transitionTo(orderResponse.id.toString, "Ready");
   }
 
-  def receiveOrder(id: String, requestDoc: NodeSeq): NodeSeq = {
+  def receiveOrder(stateMachineManagers: Map[String, StateMachineManager], requestDoc: NodeSeq, id: String): NodeSeq = {
     val orderResponse1 = db.getOrder(id)
     val orderResponse2 = orderResponse1.copy(status = Taken)
     db.updateOrder(orderResponse2)
     orderResponse2.toXML
   }
 
-  def cancelOrder(id: String, requestDoc: NodeSeq): NodeSeq = {
+  def cancelOrder(stateMachineManagers: Map[String, StateMachineManager], requestDoc: NodeSeq, id: String): NodeSeq = {
     db.deleteOrder(id)
     NodeSeq.Empty
   }
 
   private def prepareOrderAsync(id: String): Future[Unit] = {
     Future {
-      baristaWork(id)
+      scala.concurrent.blocking {
+        baristaWork(id)
+      }
     }
   }
 

@@ -12,10 +12,13 @@ class ApiRouter @Inject()(db: DatabaseService) extends SimpleRouter {
   private val orderingService = new OrderingService(db)
   private val orderStateMachineManager = new StateMachineManager(OrderTemplate.template, db, orderingService)
   private val paymentStateMachineManager = new StateMachineManager(PaymentTemplate.template, db, orderingService)
-  private val stateMachineManagers = Seq(orderStateMachineManager, paymentStateMachineManager)
-  private val stateMachineDispatcher = new StateMachineDispatcher(stateMachineManagers: _*)
+  private val stateMachineDispatcher = new StateMachineDispatcher(orderStateMachineManager, paymentStateMachineManager)
+
+  private val stateMachineManagers = Map(
+    "order" -> orderStateMachineManager,
+    "payment" -> paymentStateMachineManager)
 
   override def routes: Routes = {
-    case _ => stateMachineDispatcher.dispatch
+    case _ => stateMachineDispatcher.dispatch(stateMachineManagers)
   }
 }

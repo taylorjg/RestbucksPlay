@@ -1,5 +1,8 @@
 package api
 
+import hypermedia.PaymentTemplate
+import models.Payment
+import org.joda.time.DateTime
 import org.scalatestplus.play.{OneAppPerTest, PlaySpec}
 import play.api.mvc.Results
 
@@ -151,33 +154,40 @@ class ApiSpec extends PlaySpec
     }
   }
 
-//  This test is commented out until we have fixed the gap re creating a payment resource when an order is created.
-//
-//  "putting a payment" should {
-//    "something" in {
-//      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
-//      mockDatabaseService.addOrderResponse(orderResponse)
-//      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
-//      val payment =
-//        <payment>
-//          <amount>2.99</amount>
-//          <cardHolder>MR BRUCE FORSYTH</cardHolder>
-//          <cardNumber>4111111111111111</cardNumber>
-//          <expiryMonth>10</expiryMonth>
-//          <expiryYear>2018</expiryYear>
-//        </payment>
-//      val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(payment).withHeaders(HostHeader)
-//      val Some(result) = route(app, request)
-//      status(result) must be(OK)
-//      println(contentAsString(result))
-//    }
-//  }
+  "putting a payment" should {
+    "something" in {
+      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+      mockDatabaseService.addOrderResponse(orderResponse)
+      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+      mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentExpected")
+      // TODO: create separate PaymentRequest and PaymentResponse case classes
+      // TODO: get rid of <paid>2016-10-30T10:36:55.278Z</paid> below
+      val payment =
+        <payment>
+          <amount>2.99</amount>
+          <cardHolder>MR BRUCE FORSYTH</cardHolder>
+          <cardNumber>4111111111111111</cardNumber>
+          <expiryMonth>10</expiryMonth>
+          <expiryYear>2018</expiryYear>
+          <paid>2016-10-30T10:36:55.278Z</paid>
+        </payment>
+      val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(payment).withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(CREATED)
+    }
+  }
 
-//  "getting a payment in the PaymentReceived state" should {
-//    "something" in {
-//      // GET /api/payment/$id
-//    }
-//  }
+  "getting a payment in the PaymentReceived state" should {
+    "something" in {
+      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+      val payment = Payment(2.99, "MR BRUCE FORSYTH", "4111111111111111", 10, 2018, DateTime.now)
+      mockDatabaseService.addPayment(orderResponse.id, payment)
+      mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentReceived")
+      val request = FakeRequest("GET", s"/api/payment/${orderResponse.id}").withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(OK)
+    }
+  }
 
   private def verifyUnpaidOrderHypermediaLinks(result: Future[Result], id: Int): Unit = {
     val responseDoc = XML.loadString(contentAsString(result))
