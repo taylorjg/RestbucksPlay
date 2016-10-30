@@ -1,4 +1,4 @@
-package domainModelSerialisation.xml
+package modelSerialisation
 
 import org.scalatest.{Matchers, WordSpec}
 
