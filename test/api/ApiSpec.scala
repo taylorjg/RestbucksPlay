@@ -49,7 +49,7 @@ class ApiSpec extends PlaySpec
       Seq(OrderItem("latte", "skim", "large")),
       42,
       status,
-      2.99)
+      4.5 * 1.5)
 
   private final val MediaType = Some("application/vnd.restbucks+xml")
   private final val Host = "localhost:9000"
@@ -65,7 +65,7 @@ class ApiSpec extends PlaySpec
       verifyUnpaidOrderHypermediaLinks(result, 42)
     }
 
-    "return a response body containing the correct location, items and status" in {
+    "return a response body containing the correct location, items, status and cost" in {
       mockDatabaseService.setNextOrderId(42)
       val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder).withHeaders(HostHeader)
       val Some(result) = route(app, request)
@@ -74,18 +74,8 @@ class ApiSpec extends PlaySpec
       orderResponse.location must be("takeAway")
       orderResponse.items must be(Seq(OrderItem("latte", "skim", "large")))
       orderResponse.status must be("payment-expected")
+      orderResponse.cost must be(4.5 * 1.5)
     }
-
-//  This test is commented out until we have implemented a menu service for calculating the cost of an order.
-//
-//    "return a response body containing the correct cost" in {
-//      mockDatabaseService.setNextOrderId(42)
-//      val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder).withHeaders(HostHeader)
-//      val Some(result) = route(app, request)
-//      val responseDoc = XML.loadString(contentAsString(result))
-//      val orderResponse = OrderResponse.fromXML(responseDoc.head)
-//      orderResponse.cost must be(3.99)
-//    }
   }
 
   "getting an order in the Unpaid state" should {

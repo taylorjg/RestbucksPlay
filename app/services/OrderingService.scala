@@ -14,7 +14,8 @@ class OrderingService(db: DatabaseService) {
   def newOrder(stateMachineManagers: Map[String, StateMachineManager], requestDoc: NodeSeq): (String, NodeSeq) = {
     val orderRequest = OrderRequest.fromXML(requestDoc.head)
     val id = db.nextOrderId()
-    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, id, PaymentExpected, 2.99)
+    val cost = CostCalculatorService.calculateCost(orderRequest)
+    val orderResponse = OrderResponse(orderRequest.location, orderRequest.items, id, PaymentExpected, cost)
     val paymentStateMachineManager = stateMachineManagers("payment")
     paymentStateMachineManager.createResource(id.toString)
     (id.toString, orderResponse.toXML)
