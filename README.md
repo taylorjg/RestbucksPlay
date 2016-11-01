@@ -11,9 +11,10 @@ This is a bit sketchy at the moment but I am planning something along these line
     * ~~Objects in the graph: Accept, State, Link, Error, StateMachineTemplate~~
 * ~~Create a Play application to host Restbucks~~
 * ~~Use String Interpolating Routing DSL ([sird](https://www.playframework.com/documentation/2.5.x/ScalaSirdRouter)) to handle all the API web requests~~
-* Get a basic happy path implementation working (_IN PROGRESS_)
-* Write unit tests (_IN PROGRESS_)
+* ~~Get a basic happy path implementation working~~
+* ~~Write happy path unit tests~~
 * Add error handling
+* Write unit tests for the error scenarios
 * Deploy to Heroku
 * Write a Gatling script to exercise the API
 * Write a UI to exercise the API
