@@ -176,6 +176,34 @@ class ApiSpec extends PlaySpec
     }
   }
 
+//  "creating a new order with missing request XML elements" should {
+//    "return BAD_REQUEST" in {
+//      val xml =
+//        <order xmlns="http://schemas.restbucks.com">
+//          <!-- missing location element -->
+//          <item>
+//            <drink>latte</drink>
+//            <milk>skim</milk>
+//            <size>large</size>
+//          </item>
+//        </order>
+//      val request = FakeRequest("POST", "/api/order").withXmlBody(xml).withHeaders(HostHeader)
+//      val Some(result) = route(app, request)
+//      status(result) must be(BAD_REQUEST)
+//    }
+//  }
+
+//  "getting an order that does not exist" should {
+//    "return NOT_FOUND" in {
+//      val request = FakeRequest("GET", "/api/order/12345").withHeaders(HostHeader)
+//      val Some(result) = route(app, request)
+//      status(result) must be(NOT_FOUND)
+//    }
+//  }
+
+  // Add a test re INTERNAL_SERVER_ERROR
+  // - add a method to MockDatabaseService to force an exception to be thrown
+
   private def verifyUnpaidOrderHypermediaLinks(result: Future[Result], id: Int): Unit = {
     val responseDoc = XML.loadString(contentAsString(result))
     val dapLinks = responseDoc \ "link" map DapLink.fromXML
