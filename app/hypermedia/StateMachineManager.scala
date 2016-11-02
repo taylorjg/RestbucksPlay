@@ -46,11 +46,14 @@ class StateMachineManager(private val template: StateMachineTemplate,
         commonHandling1(stateMachineManagers, request, requestDoc, template.initialState, accept, None)
       case _ =>
         val id = request.uri.drop(pos + 1)
-        val maybeResult = for {
-          currentState <- db.loadStatesMap(uriTemplate).get(id)
-          accept <- currentState.accepts find (a => a.httpVerb == request.method)
-        } yield commonHandling1(stateMachineManagers, request, requestDoc, currentState, accept, Some(id))
-        maybeResult getOrElse InternalServerError(s"Failed to lookup current state for id $id or failed to match verb ${request.method}")
+        db.loadStatesMap(uriTemplate).get(id) match {
+          case Some(currentState) =>
+            val maybeResult = for {
+              accept <- currentState.accepts find (a => a.httpVerb == request.method)
+            } yield commonHandling1(stateMachineManagers, request, requestDoc, currentState, accept, Some(id))
+            maybeResult getOrElse InternalServerError(s"Failed to lookup current state for id $id or failed to match verb ${request.method}")
+          case None => NotFound
+        }
     }
   }
 

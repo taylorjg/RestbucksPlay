@@ -193,9 +193,20 @@ class ApiSpec extends PlaySpec
 //    }
 //  }
 
-//  "getting an order that does not exist" should {
+  "getting an order that does not exist in the states map" should {
+    "return NOT_FOUND" in {
+      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(NOT_FOUND)
+    }
+  }
+
+//  "getting an order that exists in the states map but does not exist in the database" should {
 //    "return NOT_FOUND" in {
-//      val request = FakeRequest("GET", "/api/order/12345").withHeaders(HostHeader)
+//      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+//      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+//      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
 //      val Some(result) = route(app, request)
 //      status(result) must be(NOT_FOUND)
 //    }
