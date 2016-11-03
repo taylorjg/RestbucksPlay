@@ -12,6 +12,7 @@ class StateMachineManager(private val template: StateMachineTemplate,
 
   import scala.reflect.runtime.universe._
   import scala.xml.{Elem, Node, NodeSeq}
+  import scala.util.{Failure, Success, Try}
 
   val uriTemplate: String = template.uriTemplate
 
@@ -37,23 +38,35 @@ class StateMachineManager(private val template: StateMachineTemplate,
               request: RequestHeader,
               requestDoc: NodeSeq): Result = {
 
-    val pos = uriTemplate indexOf "/{"
-    val baseUri = uriTemplate take pos
-    val trimmedRequestUri = request.uri.trim('/')
+    val tryResult = Try {
+      val pos = uriTemplate indexOf "/{"
+      val baseUri = uriTemplate take pos
+      val trimmedRequestUri = request.uri.trim('/')
 
-    template.initialState.accepts find (a => a.httpVerb == request.method) match {
-      case Some(accept) if trimmedRequestUri == baseUri =>
-        commonHandling1(stateMachineManagers, request, requestDoc, template.initialState, accept, None)
-      case _ =>
-        val id = request.uri.drop(pos + 1)
-        db.loadStatesMap(uriTemplate).get(id) match {
-          case Some(currentState) =>
-            val maybeResult = for {
-              accept <- currentState.accepts find (a => a.httpVerb == request.method)
-            } yield commonHandling1(stateMachineManagers, request, requestDoc, currentState, accept, Some(id))
-            maybeResult getOrElse InternalServerError(s"Failed to lookup current state for id $id or failed to match verb ${request.method}")
-          case None => NotFound
-        }
+      template.initialState.accepts find (a => a.httpVerb == request.method) match {
+        case Some(accept) if trimmedRequestUri == baseUri =>
+          commonHandling1(stateMachineManagers, request, requestDoc, template.initialState, accept, None)
+        case _ =>
+          val id = request.uri.drop(pos + 1)
+          db.loadStatesMap(uriTemplate).get(id) match {
+            case Some(currentState) =>
+              val maybeResult = for {
+                accept <- currentState.accepts find (a => a.httpVerb == request.method)
+              } yield commonHandling1(stateMachineManagers, request, requestDoc, currentState, accept, Some(id))
+              maybeResult getOrElse InternalServerError(s"Failed to lookup current state for id $id or failed to match verb ${request.method}")
+            case None => NotFound
+          }
+      }
+    }
+
+    tryResult match {
+      case Success(result) => result
+      case Failure(ex) =>
+        val maybeMessage1 = Option(ex.getMessage)
+        val maybeCause = Option(ex.getCause)
+        val maybeMessage2 = maybeCause map (_.getMessage)
+        val message = maybeMessage1 orElse maybeMessage2 getOrElse ""
+        InternalServerError(message)
     }
   }
 

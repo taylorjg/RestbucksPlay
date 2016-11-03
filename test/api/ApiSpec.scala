@@ -212,8 +212,16 @@ class ApiSpec extends PlaySpec
     }
   }
 
-  // Add a test re INTERNAL_SERVER_ERROR
-  // - add a method to MockDatabaseService to force an exception to be thrown
+  "an exception being thrown" should {
+    "return INTERNAL_SERVER_ERROR" in {
+      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+      mockDatabaseService.setThrowDeliberateExceptionFlag()
+      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(INTERNAL_SERVER_ERROR)
+    }
+  }
 
   private def verifyUnpaidOrderHypermediaLinks(result: Future[Result], id: Int): Unit = {
     val responseDoc = XML.loadString(contentAsString(result))

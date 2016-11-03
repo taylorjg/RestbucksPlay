@@ -10,6 +10,7 @@ class MockDatabaseService extends DatabaseService {
   private var payments = Map[Int, PaymentResponse]()
   private var resourcesToStatesMaps = Map[String, Map[String, State]]()
   private var orderId = 0
+  private var throwDeliberateExceptionFlag = false
 
   def addOrderResponse(orderResponse: OrderResponse): Unit = orders = orders + (orderResponse.id -> orderResponse)
   def addPaymentResponse(id: Int, paymentResponse: PaymentResponse): Unit = payments = payments + (id -> paymentResponse)
@@ -19,6 +20,7 @@ class MockDatabaseService extends DatabaseService {
     val v = Map(id.toString -> template.states(stateName))
     resourcesToStatesMaps = resourcesToStatesMaps + (k -> v)
   }
+  def setThrowDeliberateExceptionFlag(): Unit = throwDeliberateExceptionFlag = true
 
   override def nextOrderId(): Int =
     orderId
@@ -33,7 +35,8 @@ class MockDatabaseService extends DatabaseService {
     orders = orders + (nextOrderId -> orderResponse)
 
   override def getOrder(id: String): Option[OrderResponse] =
-    orders.get(id.toInt)
+    if (throwDeliberateExceptionFlag) throw new Exception("Deliberate exception for unit test purposes")
+    else orders.get(id.toInt)
 
   override def deleteOrder(id: String): Unit =
     orders = orders - id.toInt
