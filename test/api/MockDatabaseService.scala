@@ -32,8 +32,8 @@ class MockDatabaseService extends DatabaseService {
   override def putOrder(orderResponse: OrderResponse): Unit =
     orders = orders + (nextOrderId -> orderResponse)
 
-  override def getOrder(id: String): OrderResponse =
-    orders(id.toInt)
+  override def getOrder(id: String): Option[OrderResponse] =
+    orders.get(id.toInt)
 
   override def deleteOrder(id: String): Unit =
     orders = orders - id.toInt
@@ -44,6 +44,6 @@ class MockDatabaseService extends DatabaseService {
   override def putPayment(id: String, paymentResponse: PaymentResponse): Unit =
     payments = payments + (id.toInt -> paymentResponse)
 
-  override def getPayment(id: String): PaymentResponse =
-    payments(id.toInt)
+  override def getPayment(id: String): Option[PaymentResponse] =
+    payments.get(id.toInt)
 }

@@ -24,8 +24,8 @@ class InMemoryDatabaseService extends DatabaseService {
   override def putOrder(orderResponse: OrderResponse): Unit =
     orders = orders + (currentOrderId.toString -> orderResponse)
 
-  override def getOrder(id: String): OrderResponse =
-    orders(id)
+  override def getOrder(id: String): Option[OrderResponse] =
+    orders.get(id)
 
   override def updateOrder(orderResponse: OrderResponse): Unit =
     orders = orders.updated(orderResponse.id.toString, orderResponse)
@@ -36,6 +36,6 @@ class InMemoryDatabaseService extends DatabaseService {
   override def putPayment(id: String, paymentResponse: PaymentResponse): Unit =
     payments = payments + (id -> paymentResponse)
 
-  override def getPayment(id: String): PaymentResponse =
-    payments(id)
+  override def getPayment(id: String): Option[PaymentResponse] =
+    payments.get(id)
 }

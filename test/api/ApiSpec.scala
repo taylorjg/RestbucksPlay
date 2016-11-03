@@ -202,15 +202,15 @@ class ApiSpec extends PlaySpec
     }
   }
 
-//  "getting an order that exists in the states map but does not exist in the database" should {
-//    "return NOT_FOUND" in {
-//      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
-//      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
-//      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
-//      val Some(result) = route(app, request)
-//      status(result) must be(NOT_FOUND)
-//    }
-//  }
+  "getting an order that exists in the states map but does not exist in the database" should {
+    "return NOT_FOUND" in {
+      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+      val request = FakeRequest("GET", s"/api/order/${orderResponse.id}").withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(NOT_FOUND)
+    }
+  }
 
   // Add a test re INTERNAL_SERVER_ERROR
   // - add a method to MockDatabaseService to force an exception to be thrown

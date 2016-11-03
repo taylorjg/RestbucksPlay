@@ -70,10 +70,11 @@ class StateMachineManager(private val template: StateMachineTemplate,
       case None => methodMirror(stateMachineManagers, requestDoc)
     }
     (maybeId, result) match {
-      case (Some(id), responseDoc: NodeSeq) => commonHandling2(baseUri, id, responseDoc, state, accept)
-      case (None, (id: String, responseDoc: NodeSeq)) => commonHandling2(baseUri, id, responseDoc, state, accept)
-      case (_, result: Result) => result
-      case other => throw new Exception(s"accept method returned unexpected value, $other")
+      case (Some(id), Right(responseDoc: NodeSeq)) => commonHandling2(baseUri, id, responseDoc, state, accept)
+      case (Some(id), Left(result: Result)) => result
+      case (None, Right((id: String, responseDoc: NodeSeq))) => commonHandling2(baseUri, id, responseDoc, state, accept)
+      case (None, Left(result: Result)) => result
+      case other => throw new Exception(s"service method returned unexpected value, $other")
     }
   }
 
