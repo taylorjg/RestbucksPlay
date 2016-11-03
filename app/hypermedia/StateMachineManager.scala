@@ -7,12 +7,14 @@ class StateMachineManager(private val template: StateMachineTemplate,
                           private val db: DatabaseService,
                           private val service: Any) {
 
+  import ops.NodeSeqOps._
+  import ops.StringOps._
   import play.api.mvc.Result
   import play.api.mvc.Results._
 
   import scala.reflect.runtime.universe._
-  import scala.xml.{Elem, Node, NodeSeq}
   import scala.util.{Failure, Success, Try}
+  import scala.xml.NodeSeq
 
   val uriTemplate: String = template.uriTemplate
 
@@ -91,8 +93,6 @@ class StateMachineManager(private val template: StateMachineTemplate,
     }
   }
 
-  // TODO: handle accept.errors
-  // TODO: handle other errors => 500
   private def commonHandling2(baseUri: String, id: String, responseDoc: NodeSeq, state: State, accept: Accept): Result = {
     val newStateName = accept.transitionTo.getOrElse(state.name)
     val statusCode = accept.response
@@ -123,17 +123,5 @@ class StateMachineManager(private val template: StateMachineTemplate,
       dapLinks.foldLeft(responseDoc)((currentResponseDoc, dapLink) => currentResponseDoc addChild dapLink.toXML)
     }
     else responseDoc
-  }
-
-  implicit class NodeSeqOps(ns: NodeSeq) {
-    def addChild(child: Node): NodeSeq =
-      ns.headOption match {
-        case Some(e: Elem) => e.copy(child = e.child ++ child)
-        case other => ns
-      }
-  }
-
-  implicit class StringOps(s: String) {
-    def trim(c: Char): String = s.reverse.dropWhile(c => c == '/').reverse
   }
 }
