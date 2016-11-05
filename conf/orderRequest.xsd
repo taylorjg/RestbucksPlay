@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+    <xs:element name="order">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="location" type="xs:string" />
+                <xs:element name="item" type="ItemType" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="ItemType">
+        <xs:sequence>
+            <xs:element name="drink" type="xs:string" />
+            <xs:element name="milk" type="xs:string" />
+            <xs:element name="size" type="xs:string" />
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>
