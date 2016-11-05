@@ -223,6 +223,25 @@ class ApiSpec extends PlaySpec
     }
   }
 
+  // add test re unexpected verb e.g. PUT /api/order/{id} when in state "Unpaid"
+  "a request using a verb that is not expected in the current state" should {
+    "return METHOD_NOT_ALLOWED" in {
+      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+      val request = FakeRequest("PUT", s"/api/order/${orderResponse.id}").withXmlBody(<blah></blah>).withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(METHOD_NOT_ALLOWED)
+    }
+  }
+
+  "requesting an unknown resource" should {
+    "return NOT_FOUND" in {
+      val request = FakeRequest("GET", "/api/bogus/1").withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(NOT_FOUND)
+    }
+  }
+
   private def verifyUnpaidOrderHypermediaLinks(result: Future[Result], id: Int): Unit = {
     val responseDoc = XML.loadString(contentAsString(result))
     val dapLinks = responseDoc \ "link" map DapLink.fromXML

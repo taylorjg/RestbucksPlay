@@ -55,7 +55,7 @@ class StateMachineManager(private val template: StateMachineTemplate,
               val maybeResult = for {
                 accept <- currentState.accepts find (a => a.httpVerb == request.method)
               } yield commonHandling1(stateMachineManagers, request, requestDoc, currentState, accept, Some(id))
-              maybeResult getOrElse InternalServerError(s"Failed to lookup current state for id $id or failed to match verb ${request.method}")
+              maybeResult getOrElse MethodNotAllowed
             case None => NotFound
           }
       }
