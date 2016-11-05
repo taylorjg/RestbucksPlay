@@ -17,7 +17,7 @@ class XmlDeserialisationWithSchemaSpec extends WordSpec with Matchers {
           |  </item>
           |</order>
         """.stripMargin
-      val elem = ops.LoadXmlWithSchema(xml, "orderRequest.xsd")
+      val elem = ops.LoadXmlWithSchema(xml, "schema/orderRequest.xsd")
       println(s"elem: $elem")
     }
   }
@@ -35,7 +35,7 @@ class XmlDeserialisationWithSchemaSpec extends WordSpec with Matchers {
           |  </item>
           |</order>
         """.stripMargin
-      val elem = ops.LoadXmlWithSchema(xml, "orderRequest.xsd")
+      val elem = ops.LoadXmlWithSchema(xml, "schema/orderRequest.xsd")
       println(s"elem: $elem")
     }
   }
