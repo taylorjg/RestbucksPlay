@@ -83,7 +83,7 @@ class ApiSpec extends PlaySpec
       status(result) must be(CREATED)
     }
 
-    "return a response body containing the correct location, items, status and cost" in {
+    "return a response body containing the correct content" in {
       mockDatabaseService.setNextOrderId(id)
       val Some(result) = route(app, request)
       val responseDoc = XML.loadString(contentAsString(result))
@@ -151,7 +151,7 @@ class ApiSpec extends PlaySpec
   }
 
   "deleting an order in the Ready state" should {
-    "return a response body containing the correct location, items, status and cost" in {
+    "return a response body containing the correct content" in {
       val orderResponse = simpleOrderResponse(OrderStatuses.Ready)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Ready")
@@ -169,33 +169,70 @@ class ApiSpec extends PlaySpec
 
   "putting a payment" should {
 
+    val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+    val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(PaymentXml).withHeaders(HostHeader)
+
     "return OK" in {
-      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
       mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentExpected")
-      val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(PaymentXml).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(CREATED)
     }
 
-    // TODO: add a test re the content of the response body
-    // TODO: add a test re the hypermedia links in the response body
-  }
-
-  "getting a payment in the PaymentReceived state" should {
-    "return OK" in {
-      val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
-      val paymentResponse = PaymentResponse(2.99, "MR BRUCE FORSYTH", "4111111111111111", 10, 2018, DateTime.now)
-      mockDatabaseService.addPaymentResponse(orderResponse.id, paymentResponse)
-      mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentReceived")
-      val request = FakeRequest("GET", s"/api/payment/${orderResponse.id}").withHeaders(HostHeader)
+    "return a response body containing the correct content" in {
+      mockDatabaseService.addOrderResponse(orderResponse)
+      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+      mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentExpected")
       val Some(result) = route(app, request)
-      status(result) must be(OK)
+      val responseDoc = XML.loadString(contentAsString(result))
+      val receivedPaymentResponse = PaymentResponse.fromXML(responseDoc.head)
+      receivedPaymentResponse.amount must be(4.5 * 1.5)
+      receivedPaymentResponse.cardHolder must be("MR BRUCE FORSYTH")
+      receivedPaymentResponse.cardNumber must be("4111111111111111")
+      receivedPaymentResponse.expiryMonth must be(10)
+      receivedPaymentResponse.expiryYear must be(2018)
+    }
+
+    "return a response body containing the expected hypermedia links" in {
+      mockDatabaseService.addOrderResponse(orderResponse)
+      mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
+      mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentExpected")
+      val Some(result) = route(app, request)
+      verifyPaymentReceivedPaymentHypermediaLinks(result, orderResponse.id)
     }
   }
 
-  // TODO: add a test re getting a receipt
+  "getting a receipt from a payment in the PaymentReceived state" should {
+
+    val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
+    val paymentResponse = PaymentResponse(orderResponse.cost, "MR BRUCE FORSYTH", "4111111111111111", 10, 2018, DateTime.now)
+    val request = FakeRequest("GET", s"/api/payment/${orderResponse.id}").withHeaders(HostHeader)
+
+    "return OK" in {
+      mockDatabaseService.addPaymentResponse(orderResponse.id, paymentResponse)
+      mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentReceived")
+      val Some(result) = route(app, request)
+      status(result) must be(OK)
+    }
+
+    "return a response body containing the correct content" in {
+      mockDatabaseService.addPaymentResponse(orderResponse.id, paymentResponse)
+      mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentReceived")
+      val Some(result) = route(app, request)
+      val responseDoc = XML.loadString(contentAsString(result))
+      val receivedReceipt = Receipt.fromXML(responseDoc.head)
+      receivedReceipt.amount must be(paymentResponse.amount)
+      receivedReceipt.paid must be(paymentResponse.paid)
+    }
+
+    "return a response body containing the expected hypermedia links" in {
+      mockDatabaseService.addPaymentResponse(orderResponse.id, paymentResponse)
+      mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentReceived")
+      val Some(result) = route(app, request)
+      verifyPaymentReceivedPaymentHypermediaLinks(result, orderResponse.id)
+    }
+  }
 
   "creating a new order with invalid XML" should {
     "return BAD_REQUEST" in {
@@ -280,6 +317,15 @@ class ApiSpec extends PlaySpec
     dapLinks must contain(DapLink("self", absUri(s"/api/order/$id"), None))
     dapLinks must contain(DapLink("/api/relations/latest", absUri(s"/api/order/$id"), MediaType))
     dapLinks must contain(DapLink("/api/relations/receive", absUri(s"/api/order/$id"), MediaType))
+  }
+
+  private def verifyPaymentReceivedPaymentHypermediaLinks(result: Future[Result], id: Int): Unit = {
+    val responseDoc = XML.loadString(contentAsString(result))
+    val dapLinks = responseDoc \ "link" map DapLink.fromXML
+    dapLinks.length must be(3)
+    dapLinks must contain(DapLink("self", absUri(s"/api/payment/$id"), None))
+    dapLinks must contain(DapLink("/api/relations/order", absUri(s"/api/order/$id"), MediaType))
+    dapLinks must contain(DapLink("/api/relations/receipt", absUri(s"/api/payment/$id"), MediaType))
   }
 
   private def absUri(path: String): String = s"http://$Host$path"

@@ -126,7 +126,7 @@ class StateMachineManager(val resourceName: String,
     val states = db.loadStatesMap(uriTemplate)
     db.saveStatesMap(uriTemplate, states.updated(id, state))
 
-    if (!(template.finalStates contains state)) {
+    if (state.links.nonEmpty) {
       val selfDapLink = DapLink("self", absUri(baseUri, template.uriTemplate.replace("{id}", id)), None)
       val otherDapLinks = state.links map (link => {
         val rel = s"${template.relationsIn.trim('/')}/${link.rel}"
