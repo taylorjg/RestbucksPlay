@@ -4,17 +4,48 @@
     <xs:element name="order">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="location" type="xs:string" />
-                <xs:element name="item" type="ItemType" minOccurs="1" maxOccurs="unbounded" />
+                <xs:element name="location">
+                    <xs:simpleType>
+                        <xs:restriction base="xs:string">
+                            <xs:enumeration value="takeAway"/>
+                        </xs:restriction>
+                    </xs:simpleType>
+                </xs:element>
+                <xs:element name="item" type="ItemType" minOccurs="1" maxOccurs="unbounded"/>
             </xs:sequence>
         </xs:complexType>
     </xs:element>
 
     <xs:complexType name="ItemType">
         <xs:sequence>
-            <xs:element name="drink" type="xs:string" />
-            <xs:element name="milk" type="xs:string" />
-            <xs:element name="size" type="xs:string" />
+            <xs:element name="drink">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="espresso"/>
+                        <xs:enumeration value="latte"/>
+                        <xs:enumeration value="cappuccino"/>
+                        <xs:enumeration value="americano"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+            <xs:element name="milk">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="skim"/>
+                        <xs:enumeration value="semi"/>
+                        <xs:enumeration value="whole"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+            <xs:element name="size">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="small"/>
+                        <xs:enumeration value="medium"/>
+                        <xs:enumeration value="large"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
         </xs:sequence>
     </xs:complexType>
 
