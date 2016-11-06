@@ -1,9 +1,12 @@
 package hypermedia
 
-import play.api.mvc.RequestHeader
+import play.api.mvc.{AnyContent, Request, RequestHeader}
 import services.DatabaseService
 
-class StateMachineManager(private val template: StateMachineTemplate,
+import scala.xml.SAXParseException
+
+class StateMachineManager(schemaResource: String,
+                          private val template: StateMachineTemplate,
                           private val db: DatabaseService,
                           private val service: Any) {
 
@@ -37,27 +40,37 @@ class StateMachineManager(private val template: StateMachineTemplate,
   }
 
   def process(stateMachineManagers: Map[String, StateMachineManager],
-              request: RequestHeader,
-              requestDoc: NodeSeq): Result = {
+              request: Request[AnyContent]): Result = {
 
     val tryResult = Try {
-      val pos = uriTemplate indexOf "/{"
-      val baseUri = uriTemplate take pos
-      val trimmedRequestUri = request.uri.trim('/')
 
-      template.initialState.accepts find (a => a.httpVerb == request.method) match {
-        case Some(accept) if trimmedRequestUri == baseUri =>
-          commonHandling1(stateMachineManagers, request, requestDoc, template.initialState, accept, None)
-        case _ =>
-          val id = request.uri.drop(pos + 1)
-          db.loadStatesMap(uriTemplate).get(id) match {
-            case Some(currentState) =>
-              val maybeResult = for {
-                accept <- currentState.accepts find (a => a.httpVerb == request.method)
-              } yield commonHandling1(stateMachineManagers, request, requestDoc, currentState, accept, Some(id))
-              maybeResult getOrElse MethodNotAllowed
-            case None => NotFound
+      val tryRequestDoc = request.method match {
+        case "GET" | "HEAD" | "DELETE" => Success(NodeSeq.Empty)
+        case _ => ops.LoadXmlWithSchema(request.body.asXml.get.toString, schemaResource)
+      }
+
+      tryRequestDoc match {
+        case Success(requestDoc) =>
+          val pos = uriTemplate indexOf "/{"
+          val baseUri = uriTemplate take pos
+          val trimmedRequestUri = request.uri.trim('/')
+
+          template.initialState.accepts find (a => a.httpVerb == request.method) match {
+            case Some(accept) if trimmedRequestUri == baseUri =>
+              commonHandling1(stateMachineManagers, request, requestDoc, template.initialState, accept, None)
+            case _ =>
+              val id = request.uri.drop(pos + 1)
+              db.loadStatesMap(uriTemplate).get(id) match {
+                case Some(currentState) =>
+                  val maybeResult = for {
+                    accept <- currentState.accepts find (a => a.httpVerb == request.method)
+                  } yield commonHandling1(stateMachineManagers, request, requestDoc, currentState, accept, Some(id))
+                  maybeResult getOrElse MethodNotAllowed
+                case None => NotFound
+              }
           }
+        case Failure(ex: SAXParseException) => BadRequest(ex.getMessage)
+        case Failure(ex) => InternalServerError(ex.getMessage)
       }
     }
 

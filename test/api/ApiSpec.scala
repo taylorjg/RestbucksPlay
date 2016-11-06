@@ -33,8 +33,9 @@ class ApiSpec extends PlaySpec
       .build
   }
 
-  private val simpleOrder =
-    <order xmlns="http://schemas.restbucks.com">
+  private final val SimpleOrderXml =
+    //<order xmlns="http://schemas.restbucks.com">
+    <order>
       <location>takeAway</location>
       <item>
         <drink>latte</drink>
@@ -42,6 +43,26 @@ class ApiSpec extends PlaySpec
         <size>large</size>
       </item>
     </order>
+
+  private final val InvalidOrderXml =
+    //<order xmlns="http://schemas.restbucks.com">
+    <order>
+      <!-- missing location element -->
+      <item>
+        <drink>latte</drink>
+        <milk>skim</milk>
+        <size>large</size>
+      </item>
+    </order>
+
+  private final val PaymentXml =
+    <payment>
+      <amount>{4.5 * 1.5}</amount>
+      <cardHolder>MR BRUCE FORSYTH</cardHolder>
+      <cardNumber>4111111111111111</cardNumber>
+      <expiryMonth>10</expiryMonth>
+      <expiryYear>2018</expiryYear>
+    </payment>
 
   private def simpleOrderResponse(status: String): OrderResponse =
     OrderResponse(
@@ -59,7 +80,7 @@ class ApiSpec extends PlaySpec
 
     "return a response body containing the expected hypermedia links" in {
       mockDatabaseService.setNextOrderId(42)
-      val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder).withHeaders(HostHeader)
+      val request = FakeRequest("POST", "/api/order").withXmlBody(SimpleOrderXml).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(CREATED)
       verifyUnpaidOrderHypermediaLinks(result, 42)
@@ -67,7 +88,7 @@ class ApiSpec extends PlaySpec
 
     "return a response body containing the correct location, items, status and cost" in {
       mockDatabaseService.setNextOrderId(42)
-      val request = FakeRequest("POST", "/api/order").withXmlBody(simpleOrder).withHeaders(HostHeader)
+      val request = FakeRequest("POST", "/api/order").withXmlBody(SimpleOrderXml).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       val responseDoc = XML.loadString(contentAsString(result))
       val orderResponse = OrderResponse.fromXML(responseDoc.head)
@@ -149,15 +170,7 @@ class ApiSpec extends PlaySpec
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
       mockDatabaseService.setResourceState(PaymentTemplate.template, orderResponse.id, "PaymentExpected")
-      val payment =
-        <payment>
-          <amount>2.99</amount>
-          <cardHolder>MR BRUCE FORSYTH</cardHolder>
-          <cardNumber>4111111111111111</cardNumber>
-          <expiryMonth>10</expiryMonth>
-          <expiryYear>2018</expiryYear>
-        </payment>
-      val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(payment).withHeaders(HostHeader)
+      val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(PaymentXml).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(CREATED)
       // TODO: verify the content and links in the response body
@@ -176,22 +189,13 @@ class ApiSpec extends PlaySpec
     }
   }
 
-//  "creating a new order with missing request XML elements" should {
-//    "return BAD_REQUEST" in {
-//      val xml =
-//        <order xmlns="http://schemas.restbucks.com">
-//          <!-- missing location element -->
-//          <item>
-//            <drink>latte</drink>
-//            <milk>skim</milk>
-//            <size>large</size>
-//          </item>
-//        </order>
-//      val request = FakeRequest("POST", "/api/order").withXmlBody(xml).withHeaders(HostHeader)
-//      val Some(result) = route(app, request)
-//      status(result) must be(BAD_REQUEST)
-//    }
-//  }
+  "creating a new order with invalid XML" should {
+    "return BAD_REQUEST" in {
+      val request = FakeRequest("POST", "/api/order").withXmlBody(InvalidOrderXml).withHeaders(HostHeader)
+      val Some(result) = route(app, request)
+      status(result) must be(BAD_REQUEST)
+    }
+  }
 
   "getting an order that does not exist in the states map" should {
     "return NOT_FOUND" in {
@@ -223,12 +227,11 @@ class ApiSpec extends PlaySpec
     }
   }
 
-  // add test re unexpected verb e.g. PUT /api/order/{id} when in state "Unpaid"
   "a request using a verb that is not expected in the current state" should {
     "return METHOD_NOT_ALLOWED" in {
       val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Unpaid")
-      val request = FakeRequest("PUT", s"/api/order/${orderResponse.id}").withXmlBody(<blah></blah>).withHeaders(HostHeader)
+      val request = FakeRequest("PUT", s"/api/order/${orderResponse.id}").withXmlBody(SimpleOrderXml).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(METHOD_NOT_ALLOWED)
     }
