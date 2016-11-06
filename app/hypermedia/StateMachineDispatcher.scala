@@ -1,11 +1,12 @@
 package hypermedia
 
-import play.api.mvc.Results._
-import play.api.mvc.{Action, Handler}
-
 class StateMachineDispatcher(private val stateMachines: StateMachineManager*) {
 
-  def dispatch(stateMachineManagers: Map[String, StateMachineManager]): Handler = Action { request =>
+  import play.api.mvc.BodyParsers.parse
+  import play.api.mvc.Results.NotFound
+  import play.api.mvc.{Action, Handler}
+
+  def dispatch(stateMachineManagers: Map[String, StateMachineManager]): Handler = Action(parse.raw) { request =>
 
     val stateMachine = stateMachines find { sm =>
       val pos = sm.uriTemplate indexOf "/{"

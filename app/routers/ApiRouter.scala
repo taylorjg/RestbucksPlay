@@ -10,13 +10,23 @@ import services.{DatabaseService, OrderingService}
 class ApiRouter @Inject()(db: DatabaseService) extends SimpleRouter {
 
   private val orderingService = new OrderingService(db)
-  private val orderStateMachineManager = new StateMachineManager("schema/orderRequest.xsd", OrderTemplate.template, db, orderingService)
-  private val paymentStateMachineManager = new StateMachineManager("schema/paymentRequest.xsd", PaymentTemplate.template, db, orderingService)
+  private val orderStateMachineManager = new StateMachineManager(
+    "order",
+    "schema/orderRequest.xsd",
+    OrderTemplate.template,
+    db,
+    orderingService)
+  private val paymentStateMachineManager = new StateMachineManager(
+    "payment",
+    "schema/paymentRequest.xsd",
+    PaymentTemplate.template,
+    db,
+    orderingService)
   private val stateMachineDispatcher = new StateMachineDispatcher(orderStateMachineManager, paymentStateMachineManager)
 
   private val stateMachineManagers = Map(
-    "order" -> orderStateMachineManager,
-    "payment" -> paymentStateMachineManager)
+    orderStateMachineManager.resourceName -> orderStateMachineManager,
+    paymentStateMachineManager.resourceName -> paymentStateMachineManager)
 
   override def routes: Routes = {
     case _ => stateMachineDispatcher.dispatch(stateMachineManagers)

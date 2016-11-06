@@ -34,7 +34,6 @@ class ApiSpec extends PlaySpec
   }
 
   private final val SimpleOrderXml =
-    //<order xmlns="http://schemas.restbucks.com">
     <order>
       <location>takeAway</location>
       <item>
@@ -45,7 +44,6 @@ class ApiSpec extends PlaySpec
     </order>
 
   private final val InvalidOrderXml =
-    //<order xmlns="http://schemas.restbucks.com">
     <order>
       <!-- missing location element -->
       <item>

@@ -1,11 +1,12 @@
 package hypermedia
 
-import play.api.mvc.{AnyContent, Request, RequestHeader}
+import play.api.mvc.{AnyContent, RawBuffer, Request, RequestHeader}
 import services.DatabaseService
 
 import scala.xml.SAXParseException
 
-class StateMachineManager(schemaResource: String,
+class StateMachineManager(val resourceName: String,
+                          private val schemaResource: String,
                           private val template: StateMachineTemplate,
                           private val db: DatabaseService,
                           private val service: Any) {
@@ -40,13 +41,16 @@ class StateMachineManager(schemaResource: String,
   }
 
   def process(stateMachineManagers: Map[String, StateMachineManager],
-              request: Request[AnyContent]): Result = {
+              request: Request[RawBuffer]): Result = {
 
     val tryResult = Try {
 
       val tryRequestDoc = request.method match {
         case "GET" | "HEAD" | "DELETE" => Success(NodeSeq.Empty)
-        case _ => ops.LoadXmlWithSchema(request.body.asXml.get.toString, schemaResource)
+        case _ =>
+          val charset = request.charset getOrElse "utf-8"
+          val xml = request.body.asBytes().get.decodeString(charset)
+          ops.LoadXmlWithSchema(xml, schemaResource)
       }
 
       tryRequestDoc match {
@@ -99,9 +103,8 @@ class StateMachineManager(schemaResource: String,
     }
     (maybeId, result) match {
       case (Some(id), Right(responseDoc: NodeSeq)) => commonHandling2(baseUri, id, responseDoc, state, accept)
-      case (Some(id), Left(result: Result)) => result
       case (None, Right((id: String, responseDoc: NodeSeq))) => commonHandling2(baseUri, id, responseDoc, state, accept)
-      case (None, Left(result: Result)) => result
+      case (_, Left(result: Result)) => result
       case other => throw new Exception(s"service method returned unexpected value, $other")
     }
   }

@@ -8,7 +8,7 @@ import javax.xml.validation.SchemaFactory
 
 import org.xml.sax.InputSource
 
-import scala.util.{Success, Try}
+import scala.util.Try
 import scala.xml.{Elem, Node, NodeSeq}
 
 object NodeSeqOps {
