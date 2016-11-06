@@ -1,7 +1,5 @@
 package api
 
-import hypermedia.PaymentTemplate
-import org.joda.time.DateTime
 import org.scalatestplus.play.{OneAppPerTest, PlaySpec}
 import play.api.mvc.Results
 
@@ -11,8 +9,9 @@ class ApiSpec extends PlaySpec
   with OneAppPerTest
   with Results {
 
-  import hypermedia.{DapLink, OrderTemplate}
+  import hypermedia.{DapLink, OrderTemplate, PaymentTemplate}
   import models._
+  import org.joda.time.DateTime
   import org.scalatest.TestData
   import play.api.Application
   import play.api.inject.bind
@@ -76,17 +75,17 @@ class ApiSpec extends PlaySpec
 
   "creating a new order" should {
 
-    "return a response body containing the expected hypermedia links" in {
-      mockDatabaseService.setNextOrderId(42)
-      val request = FakeRequest("POST", "/api/order").withXmlBody(SimpleOrderXml).withHeaders(HostHeader)
+    val id = 42
+    val request = FakeRequest("POST", "/api/order").withXmlBody(SimpleOrderXml).withHeaders(HostHeader)
+
+    "return CREATED" in {
+      mockDatabaseService.setNextOrderId(id)
       val Some(result) = route(app, request)
       status(result) must be(CREATED)
-      verifyUnpaidOrderHypermediaLinks(result, 42)
     }
 
     "return a response body containing the correct location, items, status and cost" in {
-      mockDatabaseService.setNextOrderId(42)
-      val request = FakeRequest("POST", "/api/order").withXmlBody(SimpleOrderXml).withHeaders(HostHeader)
+      mockDatabaseService.setNextOrderId(id)
       val Some(result) = route(app, request)
       val responseDoc = XML.loadString(contentAsString(result))
       val orderResponse = OrderResponse.fromXML(responseDoc.head)
@@ -94,6 +93,12 @@ class ApiSpec extends PlaySpec
       orderResponse.items must be(Seq(OrderItem("latte", "skim", "large")))
       orderResponse.status must be("payment-expected")
       orderResponse.cost must be(4.5 * 1.5)
+    }
+
+    "return a response body containing the expected hypermedia links" in {
+      mockDatabaseService.setNextOrderId(id)
+      val Some(result) = route(app, request)
+      verifyUnpaidOrderHypermediaLinks(result, id)
     }
   }
 
@@ -147,7 +152,7 @@ class ApiSpec extends PlaySpec
   }
 
   "deleting an order in the Ready state" should {
-    "return a response body containing the correct location, items and status" in {
+    "return a response body containing the correct location, items, status and cost" in {
       val orderResponse = simpleOrderResponse(OrderStatuses.Ready)
       mockDatabaseService.addOrderResponse(orderResponse)
       mockDatabaseService.setResourceState(OrderTemplate.template, orderResponse.id, "Ready")
@@ -159,10 +164,12 @@ class ApiSpec extends PlaySpec
       receivedOrderResponse.location must be("takeAway")
       receivedOrderResponse.items must be(Seq(OrderItem("latte", "skim", "large")))
       receivedOrderResponse.status must be("taken")
+      orderResponse.cost must be(4.5 * 1.5)
     }
   }
 
   "putting a payment" should {
+
     "return OK" in {
       val orderResponse = simpleOrderResponse(OrderStatuses.PaymentExpected)
       mockDatabaseService.addOrderResponse(orderResponse)
@@ -171,8 +178,10 @@ class ApiSpec extends PlaySpec
       val request = FakeRequest("PUT", s"/api/payment/${orderResponse.id}").withXmlBody(PaymentXml).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(CREATED)
-      // TODO: verify the content and links in the response body
     }
+
+    // TODO: add a test re the content of the response body
+    // TODO: add a test re the hypermedia links in the response body
   }
 
   "getting a payment in the PaymentReceived state" should {
@@ -187,11 +196,14 @@ class ApiSpec extends PlaySpec
     }
   }
 
+  // TODO: add a test re getting a receipt
+
   "creating a new order with invalid XML" should {
     "return BAD_REQUEST" in {
       val request = FakeRequest("POST", "/api/order").withXmlBody(InvalidOrderXml).withHeaders(HostHeader)
       val Some(result) = route(app, request)
       status(result) must be(BAD_REQUEST)
+      contentAsString(result) must include("location")
     }
   }
 
