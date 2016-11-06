@@ -3,8 +3,6 @@ package api
 import org.scalatestplus.play.{OneAppPerTest, PlaySpec}
 import play.api.mvc.Results
 
-import scala.concurrent.Future
-
 class ApiSpec extends PlaySpec
   with OneAppPerTest
   with Results {
@@ -21,6 +19,7 @@ class ApiSpec extends PlaySpec
   import play.api.test.Helpers._
   import services.{DatabaseService, OrderStatuses}
 
+  import scala.concurrent.Future
   import scala.xml.XML
 
   private var mockDatabaseService: MockDatabaseService = _

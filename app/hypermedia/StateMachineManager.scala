@@ -103,7 +103,7 @@ class StateMachineManager(val resourceName: String,
       case (Some(id), Right(responseDoc: NodeSeq)) => commonHandling2(baseUri, id, responseDoc, state, accept)
       case (None, Right((id: String, responseDoc: NodeSeq))) => commonHandling2(baseUri, id, responseDoc, state, accept)
       case (_, Left(result: Result)) => result
-      case other => throw new Exception(s"service method returned unexpected value, $other")
+      case other => InternalServerError(s"Service method returned unexpected value, $other")
     }
   }
 
