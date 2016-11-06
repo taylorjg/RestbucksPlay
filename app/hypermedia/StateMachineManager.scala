@@ -1,26 +1,23 @@
 package hypermedia
 
-import play.api.mvc.{AnyContent, RawBuffer, Request, RequestHeader}
 import services.DatabaseService
 
-import scala.xml.SAXParseException
-
 class StateMachineManager(val resourceName: String,
-                          private val schemaResource: String,
+                          private val schema: String,
                           private val template: StateMachineTemplate,
                           private val db: DatabaseService,
                           private val service: Any) {
 
   import ops.NodeSeqOps._
   import ops.StringOps._
-  import play.api.mvc.Result
   import play.api.mvc.Results._
+  import play.api.mvc.{RawBuffer, Request, RequestHeader, Result}
 
   import scala.reflect.runtime.universe._
   import scala.util.{Failure, Success, Try}
-  import scala.xml.NodeSeq
+  import scala.xml.{NodeSeq, SAXParseException}
 
-  val uriTemplate: String = template.uriTemplate
+  val uriTemplate = template.uriTemplate
 
   private val instanceMirror = runtimeMirror(getClass.getClassLoader).reflect(service)
 
@@ -50,11 +47,12 @@ class StateMachineManager(val resourceName: String,
         case _ =>
           val charset = request.charset getOrElse "utf-8"
           val xml = request.body.asBytes().get.decodeString(charset)
-          ops.LoadXmlWithSchema(xml, schemaResource)
+          ops.LoadXmlWithSchema(xml, schema)
       }
 
       tryRequestDoc match {
         case Success(requestDoc) =>
+
           val pos = uriTemplate indexOf "/{"
           val baseUri = uriTemplate take pos
           val trimmedRequestUri = request.uri.trim('/')
